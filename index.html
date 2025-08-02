@@ -82,11 +82,7 @@
 
     async function translateText(text, sourceLang, targetLang) {
       try {
-        const proxyUrl = "https://api.allorigins.win/raw?url=";
-        const apiUrl = "https://libretranslate.de/translate";
-        const url = proxyUrl + encodeURIComponent(apiUrl);
-
-        const res = await fetch(url, {
+        const res = await fetch("https://translate.argosopentech.com/translate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
