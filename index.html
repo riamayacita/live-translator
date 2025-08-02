@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Live Voice Translator with Lingva & Auto Detect</title>
+  <title>Live Voice Translator</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -72,7 +72,6 @@
       <option value="it">Italian</option>
       <option value="es">Spanish</option>
       <option value="id">Indonesian</option>
-      <option value="auto">Auto Detect</option>
     </select>
 
     <label for="targetLang">To: </label>
@@ -106,105 +105,4 @@
   const statusEl = document.getElementById("status");
   const originalTextDiv = document.getElementById("originalText");
   const translatedTextDiv = document.getElementById("translatedText");
-  const sourceLangSelect = document.getElementById("sourceLang");
-  const targetLangSelect = document.getElementById("targetLang");
-
-  let recognition;
-  let isListening = false;
-
-  function createRecognition(lang) {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Sorry, your browser does not support speech recognition.");
-      return null;
-    }
-    const recog = new SpeechRecognition();
-    recog.continuous = true;
-    recog.interimResults = false;
-    recog.lang = lang;
-    return recog;
-  }
-
-  function startListening() {
-    if (isListening) return;
-
-    let recogLang = sourceLangSelect.value;
-    if (recogLang === "auto") {
-      // Auto-detect not supported by speech recognition,
-      // fallback to English for recognition
-      recogLang = "en-US";
-    } else {
-      // convert short codes to valid BCP-47 locale if needed:
-      if (recogLang === "en") recogLang = "en-US";
-      else if (recogLang === "it") recogLang = "it-IT";
-      else if (recogLang === "es") recogLang = "es-ES";
-      else if (recogLang === "id") recogLang = "id-ID";
-    }
-
-    recognition = createRecognition(recogLang);
-    if (!recognition) return;
-
-    recognition.onstart = () => {
-      isListening = true;
-      statusEl.textContent = "Status: Listening...";
-      startBtn.disabled = true;
-      stopBtn.disabled = false;
-    };
-
-    recognition.onend = () => {
-      isListening = false;
-      statusEl.textContent = "Status: Not listening";
-      startBtn.disabled = false;
-      stopBtn.disabled = true;
-    };
-
-    recognition.onerror = (event) => {
-      statusEl.textContent = "Error: " + event.error;
-    };
-
-    recognition.onresult = async (event) => {
-      const transcript = event.results[event.results.length - 1][0].transcript.trim();
-      if (!transcript) return;
-
-      originalTextDiv.innerHTML += `<p>${transcript}</p>`;
-
-      // Determine Lingva source language param for translation:
-      // If user selected 'auto', pass 'auto', else pass selected source language
-      const lingvaSource = sourceLangSelect.value === "auto" ? "auto" : sourceLangSelect.value;
-      const lingvaTarget = targetLangSelect.value;
-
-      try {
-        const translation = await translateLingva(transcript, lingvaSource, lingvaTarget);
-        translatedTextDiv.innerHTML += `<p>${translation}</p>`;
-      } catch (error) {
-        translatedTextDiv.innerHTML += `<p style="color:red">Translation error</p>`;
-        console.error("Translation error:", error);
-      }
-
-      // Scroll boxes to bottom to show latest
-      originalTextDiv.scrollTop = originalTextDiv.scrollHeight;
-      translatedTextDiv.scrollTop = translatedTextDiv.scrollHeight;
-    };
-
-    recognition.start();
-  }
-
-  function stopListening() {
-    if (recognition && isListening) {
-      recognition.stop();
-    }
-  }
-
-  async function translateLingva(text, from, to) {
-    const url = `https://lingva.ml/api/v1/${from}/${to}/${encodeURIComponent(text)}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Lingva API error: ${res.status}`);
-    const data = await res.json();
-    return data.translation;
-  }
-
-  startBtn.addEventListener("click", startListening);
-  stopBtn.addEventListener("click", stopListening);
-</script>
-</body>
-</html>
+  const sourceLangSelect = document.ge
