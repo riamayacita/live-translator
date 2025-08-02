@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Translator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background-color: #f2f2f2;
+    }
+    h1 {
+      text-align: center;
+    }
+    select, button {
+      margin: 10px;
+      padding: 10px;
+    }
+    #transcript, #translation {
+      margin-top: 20px;
+      padding: 15px;
+      border: 1px solid #ccc;
+      background: #fff;
+      min-height: 60px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Live Speech Translator</h1>
+  <label for="sourceLang">From:</label>
+  <select id="sourceLang">
+    <option value="en">English</option>
+    <option value="it">Italian</option>
+    <option value="es">Spanish</option>
+    <option value="id">Indonesian</option>
+  </select>
+
+  <label for="targetLang">To:</label>
+  <select id="targetLang">
+    <option value="en">English</option>
+    <option value="it">Italian</option>
+    <option value="es">Spanish</option>
+    <option value="id">Indonesian</option>
+  </select>
+
+  <button onclick="startListening()">🎙️ Start Listening</button>
+
+  <div id="transcript">Transcript: <i>waiting...</i></div>
+  <div id="translation">Translation: <i>waiting...</i></div>
+
+  <script>
+    let recognition;
+
+    async function startListening() {
+      const sourceLang = document.getElementById("sourceLang").value;
+      const targetLang = document.getElementById("targetLang").value;
+
+      if (!('webkitSpeechRecognition' in window)) {
+        alert('Your browser does not support speech recognition. Try Chrome.');
+        return;
+      }
+
+      recognition = new webkitSpeechRecognition();
+      recognition.lang = sourceLang;
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognition.start();
+
+      recognition.onresult = async (event) => {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById("transcript").innerText = `Transcript: ${transcript}`;
+        const translated = await translateText(transcript, sourceLang, targetLang);
+        document.getElementById("translation").innerText = `Translation: ${translated}`;
+      };
+
+      recognition.onerror = (e) => {
+        alert('Speech recognition error: ' + e.error);
+      };
+    }
+
+    async function translateText(text, sourceLang, targetLang) {
+      const res = await fetch("https://libretranslate.de/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          q: text,
+          source: sourceLang,
+          target: targetLang,
+          format: "text"
+        })
+      });
+      const data = await res.json();
+      return data.translatedText;
+    }
+  </script>
+</body>
+</html>
