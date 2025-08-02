@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Live Translator</title>
+  <title>Live Translator with MyMemory API</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -28,7 +28,7 @@
   </style>
 </head>
 <body>
-  <h1>Live Speech Translator</h1>
+  <h1>Live Speech Translator (MyMemory API)</h1>
 
   <label for="sourceLang">From:</label>
   <select id="sourceLang">
@@ -83,7 +83,7 @@
         console.log('Transcript:', transcript);
         document.getElementById("transcript").innerText = `Transcript: ${transcript}`;
         document.getElementById("translation").innerText = `Translating...`;
-        const translated = await translateText(transcript, sourceLang, targetLang);
+        const translated = await translateMyMemory(transcript, sourceLang, targetLang);
         document.getElementById("translation").innerText = `Translation: ${translated}`;
       };
       recognition.onerror = (e) => {
@@ -99,22 +99,16 @@
       }
     }
 
-    async function translateText(text, sourceLang, targetLang) {
+    async function translateMyMemory(text, sourceLang, targetLang) {
+      const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang}|${targetLang}`;
       try {
-        const res = await fetch("https://translate.argosopentech.com/translate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            q: text,
-            source: sourceLang,
-            target: targetLang,
-            format: "text"
-          })
-        });
-
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Network response was not ok');
         const data = await res.json();
-        return data.translatedText;
+        if (data.responseData && data.responseData.translatedText) {
+          return data.responseData.translatedText;
+        }
+        return "Error: No translation found.";
       } catch (err) {
         console.error("Translation error:", err);
         return "Error: Could not translate.";
