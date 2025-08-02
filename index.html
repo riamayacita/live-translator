@@ -82,7 +82,12 @@
 
     async function translateText(text, sourceLang, targetLang) {
       try {
-        const res = await fetch("https://translate.argosopentech.com/translate", {
+        // Important: Before using this, open https://cors-anywhere.herokuapp.com/corsdemo and click "Request temporary access"
+        const proxyUrl = "https://cors-anywhere.herokuapp.com/";
+        const apiUrl = "https://libretranslate.de/translate";
+        const url = proxyUrl + apiUrl;
+
+        const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -93,14 +98,4 @@
           })
         });
 
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        const data = await res.json();
-        return data.translatedText;
-      } catch (err) {
-        console.error("Translation error:", err);
-        return "Error: Could not translate.";
-      }
-    }
-  </script>
-</body>
-</html>
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}
