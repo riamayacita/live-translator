@@ -1,114 +1,127 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Live Translator</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Live Voice Translator</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      padding: 20px;
-      max-width: 600px;
-      margin: auto;
+      padding: 2rem;
+      background: #f9f9f9;
+      color: #333;
     }
-    button {
-      margin: 10px 5px;
-      padding: 10px;
+    select, button {
+      margin: 0.5rem 0;
+      padding: 0.5rem;
     }
-    .output {
-      margin-top: 20px;
+    #original, #translated {
+      padding: 1rem;
+      background: #fff;
+      border: 1px solid #ddd;
+      margin-top: 1rem;
+      min-height: 50px;
+    }
+    #status {
+      margin-top: 1rem;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
-  <h1>Live Translator</h1>
+  <h1>Live Voice Translator</h1>
 
-  <label for="sourceLang">From:</label>
-  <select id="sourceLang">
+  <label for="fromLang">From:</label>
+  <select id="fromLang">
     <option value="en">English</option>
     <option value="it">Italian</option>
     <option value="es">Spanish</option>
     <option value="id">Indonesian</option>
   </select>
 
-  <label for="targetLang">To:</label>
-  <select id="targetLang">
+  <label for="toLang">To:</label>
+  <select id="toLang">
     <option value="en">English</option>
     <option value="it">Italian</option>
     <option value="es">Spanish</option>
     <option value="id">Indonesian</option>
   </select>
 
-  <div>
-    <button onclick="startListening()">Start Listening</button>
-    <button onclick="stopListening()">Stop Listening</button>
-  </div>
+  <br/>
+  <button id="startBtn">Start Listening</button>
+  <button id="stopBtn" disabled>Stop Listening</button>
 
-  <div class="output">
-    <p><strong>Original:</strong> <span id="originalText">...</span></p>
-    <p><strong>Translation:</strong> <span id="translatedText">...</span></p>
-  </div>
+  <div id="status">Status: Not listening</div>
+  <div><strong>Original:</strong></div>
+  <div id="original"></div>
+
+  <div><strong>Translation:</strong></div>
+  <div id="translated"></div>
 
   <script>
-    let recognition;
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const statusEl = document.getElementById('status');
+    const originalEl = document.getElementById('original');
+    const translatedEl = document.getElementById('translated');
+    const fromLang = document.getElementById('fromLang');
+    const toLang = document.getElementById('toLang');
+
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.continuous = true;
+    recognition.interimResults = false;
+
     let isListening = false;
 
-    function startListening() {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        alert("Your browser does not support Speech Recognition.");
-        return;
-      }
-
-      recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = document.getElementById("sourceLang").value;
-
-      recognition.onresult = async (event) => {
-        let interimTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            const finalTranscript = event.results[i][0].transcript.trim();
-            document.getElementById("originalText").textContent = finalTranscript;
-            translateText(finalTranscript);
-          } else {
-            interimTranscript += event.results[i][0].transcript;
-            document.getElementById("originalText").textContent = interimTranscript;
-          }
-        }
-      };
-
-      recognition.onerror = (event) => {
-        console.error("Speech Recognition error:", event.error);
-      };
-
-      recognition.start();
-      isListening = true;
-    }
-
-    function stopListening() {
-      if (recognition && isListening) {
-        recognition.stop();
-        isListening = false;
-      }
-    }
-
-    async function translateText(text) {
-      const from = document.getElementById("sourceLang").value;
-      const to = document.getElementById("targetLang").value;
+    function translateText(text, from, to) {
       const encodedText = encodeURIComponent(text);
       const url = `https://api.mymemory.translated.net/get?q=${encodedText}&langpair=${from}|${to}`;
 
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        const translated = data.responseData.translatedText;
-        document.getElementById("translatedText").textContent = translated;
-      } catch (error) {
-        console.error("Translation error:", error);
-        document.getElementById("translatedText").textContent = "Error translating.";
-      }
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          if (data.responseData) {
+            translatedEl.textContent = data.responseData.translatedText;
+          } else {
+            translatedEl.textContent = "Translation failed.";
+          }
+        })
+        .catch(err => {
+          translatedEl.textContent = "Translation error: " + err.message;
+        });
     }
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[event.results.length - 1][0].transcript;
+      originalEl.textContent = transcript;
+      translatedEl.textContent = "Translating...";
+      translateText(transcript, fromLang.value, toLang.value);
+    };
+
+    recognition.onerror = (event) => {
+      statusEl.textContent = "Error: " + event.error;
+    };
+
+    startBtn.onclick = () => {
+      if (!isListening) {
+        recognition.lang = fromLang.value;
+        recognition.start();
+        isListening = true;
+        statusEl.textContent = "Status: Listening...";
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+      }
+    };
+
+    stopBtn.onclick = () => {
+      if (isListening) {
+        recognition.stop();
+        isListening = false;
+        statusEl.textContent = "Status: Not listening";
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+      }
+    };
   </script>
 </body>
 </html>
