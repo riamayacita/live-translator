@@ -2,113 +2,209 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Live Voice Translator (Lingva)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Live Voice Translator with Lingva & Auto Detect</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       padding: 20px;
-      background: #f4f4f4;
+      background: #fafafa;
+      max-width: 700px;
+      margin: auto;
     }
     h1 {
       text-align: center;
-      color: #333;
+      margin-bottom: 1rem;
     }
-    .container {
-      display: flex;
-      justify-content: space-between;
-      gap: 20px;
+    .controls {
+      text-align: center;
+      margin-bottom: 1rem;
     }
-    .box {
-      width: 48%;
-      background: white;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.1);
-      min-height: 200px;
-      overflow-y: auto;
+    select {
+      padding: 8px;
+      margin: 0 10px;
+      font-size: 1rem;
     }
     button {
       padding: 10px 20px;
-      margin-top: 15px;
-      font-size: 16px;
+      margin: 0 10px;
+      font-size: 1rem;
       cursor: pointer;
     }
     #status {
-      margin-top: 10px;
+      margin-top: 1rem;
+      text-align: center;
       font-weight: bold;
+      color: #555;
+    }
+    .container {
+      display: flex;
+      gap: 15px;
+      justify-content: space-between;
+      margin-top: 20px;
+    }
+    .box {
+      flex: 1;
+      background: white;
+      border-radius: 8px;
+      padding: 15px;
+      min-height: 250px;
+      overflow-y: auto;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .box h2 {
+      margin-top: 0;
+      text-align: center;
+    }
+    .box p {
+      margin: 8px 0;
+      line-height: 1.4;
     }
   </style>
 </head>
 <body>
   <h1>Live Voice Translator</h1>
+
+  <div class="controls">
+    <label for="sourceLang">From: </label>
+    <select id="sourceLang">
+      <option value="en">English</option>
+      <option value="it">Italian</option>
+      <option value="es">Spanish</option>
+      <option value="id">Indonesian</option>
+      <option value="auto">Auto Detect</option>
+    </select>
+
+    <label for="targetLang">To: </label>
+    <select id="targetLang">
+      <option value="en">English</option>
+      <option value="it">Italian</option>
+      <option value="es">Spanish</option>
+      <option value="id">Indonesian</option>
+    </select>
+
+    <button id="startBtn">Start Listening</button>
+    <button id="stopBtn" disabled>Stop Listening</button>
+  </div>
+
+  <div id="status">Status: Not listening</div>
+
   <div class="container">
     <div class="box">
-      <h3>Original Text</h3>
+      <h2>Original Text</h2>
       <div id="originalText"></div>
     </div>
     <div class="box">
-      <h3>Translated Text</h3>
+      <h2>Translated Text</h2>
       <div id="translatedText"></div>
     </div>
   </div>
-  <button onclick="startListening()">Start Listening</button>
-  <button onclick="stopListening()">Stop Listening</button>
-  <div id="status"></div>
 
-  <script>
-    let recognition;
-    let originalTextDiv = document.getElementById("originalText");
-    let translatedTextDiv = document.getElementById("translatedText");
-    let statusDiv = document.getElementById("status");
+<script>
+  const startBtn = document.getElementById("startBtn");
+  const stopBtn = document.getElementById("stopBtn");
+  const statusEl = document.getElementById("status");
+  const originalTextDiv = document.getElementById("originalText");
+  const translatedTextDiv = document.getElementById("translatedText");
+  const sourceLangSelect = document.getElementById("sourceLang");
+  const targetLangSelect = document.getElementById("targetLang");
 
-    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-      alert("Sorry, your browser doesn't support speech recognition.");
+  let recognition;
+  let isListening = false;
+
+  function createRecognition(lang) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Sorry, your browser does not support speech recognition.");
+      return null;
+    }
+    const recog = new SpeechRecognition();
+    recog.continuous = true;
+    recog.interimResults = false;
+    recog.lang = lang;
+    return recog;
+  }
+
+  function startListening() {
+    if (isListening) return;
+
+    let recogLang = sourceLangSelect.value;
+    if (recogLang === "auto") {
+      // Auto-detect not supported by speech recognition,
+      // fallback to English for recognition
+      recogLang = "en-US";
     } else {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      recognition = new SpeechRecognition();
-      recognition.lang = "en-US";
-      recognition.continuous = true;
-      recognition.interimResults = false;
-
-      recognition.onstart = () => {
-        statusDiv.textContent = "Listening...";
-      };
-
-      recognition.onend = () => {
-        statusDiv.textContent = "Stopped listening.";
-      };
-
-      recognition.onerror = (event) => {
-        statusDiv.textContent = "Error: " + event.error;
-      };
-
-      recognition.onresult = async (event) => {
-        const transcript = event.results[event.results.length - 1][0].transcript.trim();
-        originalTextDiv.innerHTML += `<p>${transcript}</p>`;
-        try {
-          const translated = await translateTextLingva(transcript, 'en', 'it');
-          translatedTextDiv.innerHTML += `<p>${translated}</p>`;
-        } catch (err) {
-          translatedTextDiv.innerHTML += `<p style="color:red;">Translation error</p>`;
-        }
-      };
+      // convert short codes to valid BCP-47 locale if needed:
+      if (recogLang === "en") recogLang = "en-US";
+      else if (recogLang === "it") recogLang = "it-IT";
+      else if (recogLang === "es") recogLang = "es-ES";
+      else if (recogLang === "id") recogLang = "id-ID";
     }
 
-    function startListening() {
-      if (recognition) recognition.start();
-    }
+    recognition = createRecognition(recogLang);
+    if (!recognition) return;
 
-    function stopListening() {
-      if (recognition) recognition.stop();
-    }
+    recognition.onstart = () => {
+      isListening = true;
+      statusEl.textContent = "Status: Listening...";
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+    };
 
-    async function translateTextLingva(text, fromLang, toLang) {
-      const response = await fetch(`https://lingva.ml/api/v1/${fromLang}/${toLang}/${encodeURIComponent(text)}`);
-      if (!response.ok) throw new Error("Failed to fetch translation");
-      const data = await response.json();
-      return data.translation;
+    recognition.onend = () => {
+      isListening = false;
+      statusEl.textContent = "Status: Not listening";
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    };
+
+    recognition.onerror = (event) => {
+      statusEl.textContent = "Error: " + event.error;
+    };
+
+    recognition.onresult = async (event) => {
+      const transcript = event.results[event.results.length - 1][0].transcript.trim();
+      if (!transcript) return;
+
+      originalTextDiv.innerHTML += `<p>${transcript}</p>`;
+
+      // Determine Lingva source language param for translation:
+      // If user selected 'auto', pass 'auto', else pass selected source language
+      const lingvaSource = sourceLangSelect.value === "auto" ? "auto" : sourceLangSelect.value;
+      const lingvaTarget = targetLangSelect.value;
+
+      try {
+        const translation = await translateLingva(transcript, lingvaSource, lingvaTarget);
+        translatedTextDiv.innerHTML += `<p>${translation}</p>`;
+      } catch (error) {
+        translatedTextDiv.innerHTML += `<p style="color:red">Translation error</p>`;
+        console.error("Translation error:", error);
+      }
+
+      // Scroll boxes to bottom to show latest
+      originalTextDiv.scrollTop = originalTextDiv.scrollHeight;
+      translatedTextDiv.scrollTop = translatedTextDiv.scrollHeight;
+    };
+
+    recognition.start();
+  }
+
+  function stopListening() {
+    if (recognition && isListening) {
+      recognition.stop();
     }
-  </script>
+  }
+
+  async function translateLingva(text, from, to) {
+    const url = `https://lingva.ml/api/v1/${from}/${to}/${encodeURIComponent(text)}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Lingva API error: ${res.status}`);
+    const data = await res.json();
+    return data.translation;
+  }
+
+  startBtn.addEventListener("click", startListening);
+  stopBtn.addEventListener("click", stopListening);
+</script>
 </body>
 </html>
