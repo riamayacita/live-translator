@@ -81,20 +81,29 @@
     }
 
     async function translateText(text, sourceLang, targetLang) {
-      const url = "https://translate.argosopentech.com/translate"; // Public free instance
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          q: text,
-          source: sourceLang,
-          target: targetLang,
-          format: "text"
-        })
-      });
+      try {
+        const proxyUrl = "https://api.allorigins.win/raw?url=";
+        const apiUrl = "https://libretranslate.de/translate";
+        const url = proxyUrl + encodeURIComponent(apiUrl);
 
-      const data = await res.json();
-      return data.translatedText;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            q: text,
+            source: sourceLang,
+            target: targetLang,
+            format: "text"
+          })
+        });
+
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const data = await res.json();
+        return data.translatedText;
+      } catch (err) {
+        console.error("Translation error:", err);
+        return "Error: Could not translate.";
+      }
     }
   </script>
 </body>
