@@ -3,103 +3,111 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Live Voice Translator</title>
+  <title>Live Voice Translator (Lingva)</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       padding: 20px;
+      background: #f4f4f4;
     }
     h1 {
       text-align: center;
+      color: #333;
     }
     .container {
       display: flex;
       justify-content: space-between;
       gap: 20px;
-      margin-top: 20px;
     }
     .box {
       width: 48%;
-      border: 1px solid #ccc;
-      padding: 10px;
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
       min-height: 200px;
-      white-space: pre-wrap;
-      background-color: #f9f9f9;
+      overflow-y: auto;
     }
     button {
       padding: 10px 20px;
-      margin: 5px;
+      margin-top: 15px;
       font-size: 16px;
+      cursor: pointer;
+    }
+    #status {
+      margin-top: 10px;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
   <h1>Live Voice Translator</h1>
-  <div style="text-align: center;">
-    <button id="startBtn">Start Listening</button>
-    <button id="stopBtn" disabled>Stop Listening</button>
-  </div>
   <div class="container">
-    <div class="box" id="originalText">Original Text:</div>
-    <div class="box" id="translatedText">Translation:</div>
+    <div class="box">
+      <h3>Original Text</h3>
+      <div id="originalText"></div>
+    </div>
+    <div class="box">
+      <h3>Translated Text</h3>
+      <div id="translatedText"></div>
+    </div>
   </div>
+  <button onclick="startListening()">Start Listening</button>
+  <button onclick="stopListening()">Stop Listening</button>
+  <div id="status"></div>
 
   <script>
-    const startBtn = document.getElementById('startBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    const originalBox = document.getElementById('originalText');
-    const translatedBox = document.getElementById('translatedText');
+    let recognition;
+    let originalTextDiv = document.getElementById("originalText");
+    let translatedTextDiv = document.getElementById("translatedText");
+    let statusDiv = document.getElementById("status");
 
-    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.lang = 'en-US';
-    recognition.continuous = true;
-    recognition.interimResults = false;
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+      alert("Sorry, your browser doesn't support speech recognition.");
+    } else {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.continuous = true;
+      recognition.interimResults = false;
 
-    let isListening = false;
+      recognition.onstart = () => {
+        statusDiv.textContent = "Listening...";
+      };
 
-    recognition.onresult = async function (event) {
-      const transcript = event.results[event.resultIndex][0].transcript.trim();
-      if (!transcript) return;
+      recognition.onend = () => {
+        statusDiv.textContent = "Stopped listening.";
+      };
 
-      originalBox.textContent += '\n' + transcript;
+      recognition.onerror = (event) => {
+        statusDiv.textContent = "Error: " + event.error;
+      };
 
-      try {
-        const translation = await translateText(transcript, 'en', 'it');
-        translatedBox.textContent += '\n' + translation;
-      } catch (error) {
-        console.error("Translation error:", error);
-        translatedBox.textContent += '\n[Translation Error]';
-      }
-    };
+      recognition.onresult = async (event) => {
+        const transcript = event.results[event.results.length - 1][0].transcript.trim();
+        originalTextDiv.innerHTML += `<p>${transcript}</p>`;
+        try {
+          const translated = await translateTextLingva(transcript, 'en', 'it');
+          translatedTextDiv.innerHTML += `<p>${translated}</p>`;
+        } catch (err) {
+          translatedTextDiv.innerHTML += `<p style="color:red;">Translation error</p>`;
+        }
+      };
+    }
 
-    recognition.onerror = function (event) {
-      console.error("Speech recognition error:", event.error);
-    };
+    function startListening() {
+      if (recognition) recognition.start();
+    }
 
-    startBtn.addEventListener('click', () => {
-      if (!isListening) {
-        recognition.start();
-        isListening = true;
-        startBtn.disabled = true;
-        stopBtn.disabled = false;
-      }
-    });
+    function stopListening() {
+      if (recognition) recognition.stop();
+    }
 
-    stopBtn.addEventListener('click', () => {
-      if (isListening) {
-        recognition.stop();
-        isListening = false;
-        startBtn.disabled = false;
-        stopBtn.disabled = true;
-      }
-    });
-
-    async function translateText(text, from, to) {
-      if (!text || !from || !to) throw new Error("Missing parameters");
-      const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${from}|${to}`;
-      const response = await fetch(url);
+    async function translateTextLingva(text, fromLang, toLang) {
+      const response = await fetch(`https://lingva.ml/api/v1/${fromLang}/${toLang}/${encodeURIComponent(text)}`);
+      if (!response.ok) throw new Error("Failed to fetch translation");
       const data = await response.json();
-      return data.responseData.translatedText;
+      return data.translation;
     }
   </script>
 </body>
