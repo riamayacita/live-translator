@@ -1,93 +1,125 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Live Translator</title>
-<style>
-  body { font-family: Arial; padding: 20px; background: #f2f2f2; }
-  h1 { text-align: center; }
-  select, button { margin: 10px; padding: 10px; }
-  #transcript, #translation { margin-top: 20px; padding: 15px; border: 1px solid #ccc; background: #fff; min-height: 60px; }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Live Translator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background-color: #f2f2f2;
+    }
+    h1 {
+      text-align: center;
+    }
+    select, button {
+      margin: 10px;
+      padding: 10px;
+    }
+    #transcript, #translation {
+      margin-top: 20px;
+      padding: 15px;
+      border: 1px solid #ccc;
+      background: #fff;
+      min-height: 60px;
+      white-space: pre-wrap;
+    }
+  </style>
 </head>
 <body>
-<h1>Live Speech Translator</h1>
+  <h1>Live Speech Translator</h1>
 
-<label for="sourceLang">From:</label>
-<select id="sourceLang">
-  <option value="en">English</option>
-  <option value="it">Italian</option>
-  <option value="es">Spanish</option>
-  <option value="id">Indonesian</option>
-</select>
+  <label for="sourceLang">From:</label>
+  <select id="sourceLang">
+    <option value="en">English</option>
+    <option value="it">Italian</option>
+    <option value="es">Spanish</option>
+    <option value="id">Indonesian</option>
+  </select>
 
-<label for="targetLang">To:</label>
-<select id="targetLang">
-  <option value="en">English</option>
-  <option value="it">Italian</option>
-  <option value="es">Spanish</option>
-  <option value="id">Indonesian</option>
-</select>
+  <label for="targetLang">To:</label>
+  <select id="targetLang">
+    <option value="en">English</option>
+    <option value="it">Italian</option>
+    <option value="es">Spanish</option>
+    <option value="id">Indonesian</option>
+  </select>
 
-<button onclick="startListening()">🎙️ Start Listening</button>
+  <button onclick="startListening()">🎙️ Start Listening</button>
 
-<div id="transcript">Transcript: <i>waiting...</i></div>
-<div id="translation">Translation: <i>waiting...</i></div>
+  <div id="transcript">Transcript: <i>waiting...</i></div>
+  <div id="translation">Translation: <i>waiting...</i></div>
 
-<script>
-  let recognition;
+  <script>
+    let recognition;
 
-  async function startListening() {
-    const sourceLang = document.getElementById("sourceLang").value;
-    const targetLang = document.getElementById("targetLang").value;
+    async function startListening() {
+      const sourceLang = document.getElementById("sourceLang").value;
+      const targetLang = document.getElementById("targetLang").value;
 
-    if (!('webkitSpeechRecognition' in window)) {
-      alert('Your browser does not support speech recognition. Try Chrome.');
-      return;
+      if (!('webkitSpeechRecognition' in window)) {
+        alert('Your browser does not support speech recognition. Please use Google Chrome.');
+        return;
+      }
+
+      recognition = new webkitSpeechRecognition();
+      recognition.lang = sourceLang;
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        console.log('Speech recognition started');
+      };
+      recognition.onspeechstart = () => {
+        console.log('Speech detected');
+      };
+      recognition.onspeechend = () => {
+        console.log('Speech ended');
+        recognition.stop();
+      };
+      recognition.onresult = async (event) => {
+        const transcript = event.results[0][0].transcript;
+        console.log('Transcript:', transcript);
+        document.getElementById("transcript").innerText = `Transcript: ${transcript}`;
+        document.getElementById("translation").innerText = `Translating...`;
+        const translated = await translateText(transcript, sourceLang, targetLang);
+        document.getElementById("translation").innerText = `Translation: ${translated}`;
+      };
+      recognition.onerror = (e) => {
+        console.error('Speech recognition error:', e.error);
+        alert('Speech recognition error: ' + e.error);
+      };
+
+      try {
+        recognition.start();
+      } catch (err) {
+        console.error('Speech recognition start error:', err);
+        alert('Error starting speech recognition: ' + err.message);
+      }
     }
 
-    recognition = new webkitSpeechRecognition();
-    recognition.lang = sourceLang;
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-    recognition.start();
+    async function translateText(text, sourceLang, targetLang) {
+      try {
+        const res = await fetch("https://translate.argosopentech.com/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            q: text,
+            source: sourceLang,
+            target: targetLang,
+            format: "text"
+          })
+        });
 
-    recognition.onresult = async (event) => {
-      const transcript = event.results[0][0].transcript;
-      document.getElementById("transcript").innerText = `Transcript: ${transcript}`;
-      document.getElementById("translation").innerText = `Translating...`;
-
-      const translated = await translateText(transcript, sourceLang, targetLang);
-      document.getElementById("translation").innerText = `Translation: ${translated}`;
-    };
-
-    recognition.onerror = (e) => {
-      alert('Speech recognition error: ' + e.error);
-    };
-  }
-
-  async function translateText(text, sourceLang, targetLang) {
-    try {
-      const res = await fetch("https://translate.argosopentech.com/translate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          q: text,
-          source: sourceLang,
-          target: targetLang,
-          format: "text"
-        })
-      });
-
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      const data = await res.json();
-      return data.translatedText;
-    } catch (err) {
-      console.error("Translation error:", err);
-      return "Error: Could not translate.";
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const data = await res.json();
+        return data.translatedText;
+      } catch (err) {
+        console.error("Translation error:", err);
+        return "Error: Could not translate.";
+      }
     }
-  }
-</script>
+  </script>
 </body>
 </html>
