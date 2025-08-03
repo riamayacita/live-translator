@@ -7,55 +7,57 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 20px;
-      background: #f2f2f2;
+      padding: 20px;
+      background-color: #f2f2f2;
     }
     h1 {
       text-align: center;
-      color: #333;
-    }
-    .controls {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    select, button {
-      margin: 5px;
-      padding: 10px;
-      font-size: 16px;
-    }
-    .container {
-      display: flex;
-      justify-content: space-between;
-      gap: 20px;
-      flex-wrap: wrap;
     }
     textarea {
-      width: 100%;
-      height: 300px;
-      padding: 15px;
+      width: 45%;
+      height: 200px;
+      margin: 10px;
       font-size: 16px;
-      resize: none;
-      border: 1px solid #ccc;
-      background: #fff;
+      padding: 10px;
     }
-    .box {
-      flex: 1 1 48%;
+    select {
+      margin: 10px;
+      padding: 5px;
+      font-size: 16px;
     }
-    #savedOutput {
+    button {
+      margin: 10px;
+      padding: 10px 15px;
+      font-size: 16px;
+    }
+    #saved {
       margin-top: 20px;
-      white-space: pre-wrap;
-      background: #fff;
-      padding: 15px;
+      padding: 10px;
+      background: white;
       border: 1px solid #ccc;
+    }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    .column {
+      flex: 1;
+      min-width: 45%;
+    }
+    @media (max-width: 600px) {
+      textarea {
+        width: 100%;
+      }
     }
   </style>
 </head>
 <body>
   <h1>Maya Live Language Translator App</h1>
 
-  <div class="controls">
-    <select id="fromLang">
-      <option value="auto">Auto Detect</option>
+  <div>
+    <label for="sourceLang">Speak in:</label>
+    <select id="sourceLang">
       <option value="en">English</option>
       <option value="it">Italian</option>
       <option value="es">Spanish</option>
@@ -73,7 +75,9 @@
       <option value="zh">Chinese</option>
       <option value="th">Thai</option>
     </select>
-    <select id="toLang">
+
+    <label for="targetLang">Translate to:</label>
+    <select id="targetLang">
       <option value="en">English</option>
       <option value="it">Italian</option>
       <option value="es">Spanish</option>
@@ -91,109 +95,98 @@
       <option value="zh">Chinese</option>
       <option value="th">Thai</option>
     </select>
-    <br />
+
     <button onclick="startListening()">Start Listening</button>
     <button onclick="stopListening()">Stop Listening</button>
-    <button onclick="eraseText()">Erase</button>
-    <button onclick="saveText()">Save</button>
+    <button onclick="eraseAll()">Erase All</button>
+    <button onclick="downloadText()">Save to .txt</button>
+    <button onclick="speakTranslation()">🔊 Read Translation</button>
   </div>
 
-  <div class="container">
-    <div class="box">
+  <div class="row">
+    <div class="column">
       <h3>Original Text</h3>
       <textarea id="originalText" readonly></textarea>
     </div>
-    <div class="box">
+    <div class="column">
       <h3>Translated Text</h3>
       <textarea id="translatedText" readonly></textarea>
     </div>
   </div>
 
-  <div id="savedOutput">
-    <h3>Saved Translation</h3>
-    <div id="savedText"></div>
+  <div id="saved">
+    <h3>Saved Translations</h3>
+    <div id="savedTranslations"></div>
   </div>
 
   <script>
-    let recognition;
-    let listening = false;
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.continuous = true;
+    recognition.interimResults = false;
 
     function startListening() {
-      if (!('webkitSpeechRecognition' in window)) {
-        alert("Your browser doesn't support Speech Recognition.");
-        return;
-      }
-
-      recognition = new webkitSpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-
-      const fromLang = document.getElementById("fromLang").value;
-      recognition.lang = fromLang === "auto" ? "en-US" : fromLang;
-
-      recognition.onresult = function (event) {
-        let finalTranscript = "";
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          const transcript = event.results[i][0].transcript.trim();
-          if (event.results[i].isFinal) {
-            finalTranscript += transcript + ". ";
-            document.getElementById("originalText").value += transcript + ".\n";
-            translateText(transcript);
-          }
-        }
-      };
-
+      const lang = document.getElementById("sourceLang").value;
+      recognition.lang = lang;
       recognition.start();
-      listening = true;
     }
 
     function stopListening() {
-      if (recognition && listening) {
-        recognition.stop();
-        listening = false;
-      }
+      recognition.stop();
     }
 
-    function translateText(text) {
-      const fromLang = document.getElementById("fromLang").value;
-      const toLang = document.getElementById("toLang").value;
-
-      const url = `https://lingva.ml/api/v1/${fromLang}/${toLang}/${encodeURIComponent(text)}`;
-      fetch(url)
-        .then(response => response.json())
-        .then(data => {
-          const translated = data.translation;
-          document.getElementById("translatedText").value += translated + "\n";
-          speak(translated, toLang);
-        })
-        .catch(error => {
-          console.error("Translation error:", error);
-        });
-    }
-
-    function eraseText() {
+    function eraseAll() {
       document.getElementById("originalText").value = "";
       document.getElementById("translatedText").value = "";
-      document.getElementById("savedText").innerHTML = "";
+      document.getElementById("savedTranslations").innerHTML = "";
     }
 
-    function saveText() {
-      const original = document.getElementById("originalText").value.split("\n").filter(Boolean);
-      const translated = document.getElementById("translatedText").value.split("\n").filter(Boolean);
+    function downloadText() {
+      const text = document.getElementById("savedTranslations").innerText;
+      const blob = new Blob([text], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "maya_translation.txt";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
 
-      let savedContent = "";
-      for (let i = 0; i < original.length; i++) {
-        savedContent += `<p><strong>${original[i]}</strong><br/>${translated[i] || ""}</p>`;
+    function speakTranslation() {
+      const msg = new SpeechSynthesisUtterance();
+      msg.text = document.getElementById("translatedText").value;
+      const targetLang = document.getElementById("targetLang").value;
+      msg.lang = targetLang;
+      window.speechSynthesis.speak(msg);
+    }
+
+    async function translateText(text, sourceLang, targetLang) {
+      const url = `https://lingva.ml/api/v1/${sourceLang}/${targetLang}/${encodeURIComponent(text)}`;
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        return data.translation;
+      } catch (err) {
+        return "(Translation Error)";
       }
-      document.getElementById("savedText").innerHTML = savedContent;
     }
 
-    function speak(text, lang) {
-      const synth = window.speechSynthesis;
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.lang = lang;
-      synth.speak(utter);
-    }
+    recognition.onresult = async function (event) {
+      const transcript = event.results[event.results.length - 1][0].transcript.trim();
+      const originalBox = document.getElementById("originalText");
+      const translatedBox = document.getElementById("translatedText");
+
+      originalBox.value += transcript + "\n";
+
+      const sourceLang = document.getElementById("sourceLang").value;
+      const targetLang = document.getElementById("targetLang").value;
+      const translation = await translateText(transcript, sourceLang, targetLang);
+
+      translatedBox.value += translation + "\n";
+
+      const savedDiv = document.getElementById("savedTranslations");
+      savedDiv.innerHTML += `<p><strong>${transcript}</strong><br/>${translation}</p>`;
+    };
   </script>
 </body>
 </html>
