@@ -126,7 +126,7 @@
       <button onclick="stopRecording()">Stop Recording</button>
       <button onclick="eraseText()">Erase</button>
       <button onclick="saveAsText()">Save as .txt</button>
-      <img id="recording-indicator" src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/OOjs_UI_icon_recording_on.svg/240px-OOjs_UI_icon_recording_on.svg.png" alt="Recording" />
+      <img id="recording-indicator" src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Red_Circle.svg/1024px-Red_Circle.svg.png" alt="Recording" />
     </div>
 
     <div class="side-by-side">
@@ -177,7 +177,7 @@
       let sourceLang = document.getElementById("sourceLang").value;
       let targetLang = document.getElementById("targetLang").value;
 
-      // Lingva API expects "auto" for source language detection
+      // Lingva API for translation
       if (sourceLang === 'auto') sourceLang = 'auto';
 
       try {
