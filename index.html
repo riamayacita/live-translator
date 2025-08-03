@@ -1,61 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
   <title>Maya Live Language Translator App</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      padding: 20px;
-      background: #f0f8ff;
+      margin: 40px;
+      background: #f4f4f4;
     }
-
     h1 {
-      color: #333;
       text-align: center;
+      margin-bottom: 30px;
     }
-
-    .controls {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-
-    button, select {
+    select, button {
+      padding: 8px;
       margin: 5px;
-      padding: 10px 15px;
-      font-size: 16px;
     }
-
-    .text-area-container {
-      display: flex;
-      justify-content: space-between;
-      gap: 20px;
-      margin-bottom: 20px;
-    }
-
     textarea {
-      width: 48%;
-      height: 400px;
+      width: 100%;
+      height: 250px;
+      padding: 15px;
       font-size: 16px;
-      padding: 10px;
+      margin-bottom: 20px;
       resize: vertical;
     }
-
-    #status {
-      text-align: center;
-      margin-top: 10px;
-      color: green;
+    .flex-container {
+      display: flex;
+      gap: 20px;
+    }
+    .half {
+      width: 50%;
     }
   </style>
 </head>
 <body>
   <h1>Maya Live Language Translator App</h1>
 
-  <div class="controls">
-    <label for="sourceLang">From: </label>
-    <select id="sourceLang">
-      <option value="auto">Auto Detect</option>
+  <div>
+    <label for="inputLang">Transcribe Language:</label>
+    <select id="inputLang">
       <option value="en">English</option>
       <option value="it">Italian</option>
       <option value="es">Spanish</option>
@@ -69,12 +53,11 @@
       <option value="ig">Igbo</option>
       <option value="pl">Polish</option>
       <option value="de">German</option>
-      <option value="jv">Javanese</option>
       <option value="hi">Hindi</option>
     </select>
 
-    <label for="targetLang">To: </label>
-    <select id="targetLang">
+    <label for="outputLang">Translate To:</label>
+    <select id="outputLang">
       <option value="en">English</option>
       <option value="it">Italian</option>
       <option value="es">Spanish</option>
@@ -88,111 +71,111 @@
       <option value="ig">Igbo</option>
       <option value="pl">Polish</option>
       <option value="de">German</option>
-      <option value="jv">Javanese</option>
       <option value="hi">Hindi</option>
-    </select><br>
+    </select>
 
     <button onclick="startListening()">Start Listening</button>
     <button onclick="stopListening()">Stop Listening</button>
-    <button onclick="clearText()">Erase All</button>
-    <button onclick="saveText()">Save</button>
-    <div id="status"></div>
+    <button onclick="erase()">Erase</button>
+    <button onclick="save()">Save</button>
   </div>
 
-  <div class="text-area-container">
-    <textarea id="originalText" placeholder="Original speech-to-text will appear here..." readonly></textarea>
-    <textarea id="translatedText" placeholder="Translation will appear here..." readonly></textarea>
+  <div class="flex-container">
+    <div class="half">
+      <h3>Original Text</h3>
+      <textarea id="originalText" readonly></textarea>
+    </div>
+    <div class="half">
+      <h3>Translated Text</h3>
+      <textarea id="translatedText" readonly></textarea>
+    </div>
   </div>
 
   <script>
+    const originalText = document.getElementById("originalText");
+    const translatedText = document.getElementById("translatedText");
     let recognition;
     let isListening = false;
 
     function startListening() {
+      const lang = document.getElementById("inputLang").value;
+
       if (!('webkitSpeechRecognition' in window)) {
-        alert("Your browser does not support speech recognition.");
+        alert("Speech Recognition not supported");
         return;
       }
 
-      const lang = document.getElementById("sourceLang").value;
       recognition = new webkitSpeechRecognition();
+      recognition.lang = lang;
       recognition.continuous = true;
       recognition.interimResults = false;
-      recognition.lang = lang === "auto" ? "en-US" : lang + "-US";
 
-      recognition.onstart = () => {
-        document.getElementById("status").textContent = "Listening...";
-        isListening = true;
+      recognition.onresult = async (event) => {
+        const transcript = event.results[event.resultIndex][0].transcript.trim();
+        originalText.value += transcript + "\n";
+        const toLang = document.getElementById("outputLang").value;
+        const translation = await translateText(transcript, lang, toLang);
+        translatedText.value += translation + "\n";
+        speakTranslation(translation, toLang);
       };
 
-      recognition.onerror = (event) => {
-        console.error("Recognition error:", event.error);
-        document.getElementById("status").textContent = "Error: " + event.error;
-      };
-
+      recognition.onerror = (e) => console.error("Speech recognition error:", e);
       recognition.onend = () => {
-        document.getElementById("status").textContent = "Stopped.";
-        isListening = false;
-      };
-
-      recognition.onresult = (event) => {
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            const original = event.results[i][0].transcript.trim();
-            document.getElementById("originalText").value += original + "\n";
-            translateText(original);
-          }
-        }
+        if (isListening) recognition.start(); // Restart if still listening
       };
 
       recognition.start();
+      isListening = true;
     }
 
     function stopListening() {
-      if (recognition && isListening) {
+      if (recognition) {
         recognition.stop();
+        isListening = false;
       }
     }
 
-    function translateText(original) {
-      const source = document.getElementById("sourceLang").value;
-      const target = document.getElementById("targetLang").value;
-
-      const url = `https://lingva.ml/api/v1/${source}/${target}/${encodeURIComponent(original)}`;
-
-      fetch(url)
-        .then(res => res.json())
-        .then(data => {
-          const translated = data.translation;
-          document.getElementById("translatedText").value += translated + "\n";
-        })
-        .catch(error => {
-          console.error("Translation error:", error);
-        });
-    }
-
-    function clearText() {
-      document.getElementById("originalText").value = "";
-      document.getElementById("translatedText").value = "";
-    }
-
-    function saveText() {
-      const original = document.getElementById("originalText").value.trim().split("\n");
-      const translated = document.getElementById("translatedText").value.trim().split("\n");
-
-      let combined = "";
-      for (let i = 0; i < original.length; i++) {
-        combined += "Original: " + (original[i] || "") + "\n";
-        combined += "Translated: " + (translated[i] || "") + "\n\n";
+    async function translateText(text, from, to) {
+      const url = `https://lingva.ml/api/v1/${from}/${to}/${encodeURIComponent(text)}`;
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        return data.translation;
+      } catch (error) {
+        console.error("Translation error:", error);
+        return "[Translation Failed]";
       }
+    }
 
-      const blob = new Blob([combined], { type: "text/plain" });
+    function speakTranslation(text, lang) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = lang;
+      speechSynthesis.speak(utterance);
+    }
+
+    function erase() {
+      originalText.value = "";
+      translatedText.value = "";
+    }
+
+    function save() {
+      const blob = new Blob([pairSentences(originalText.value, translatedText.value)], { type: "text/plain;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = "maya_translations.txt";
       a.click();
       URL.revokeObjectURL(url);
+    }
+
+    function pairSentences(original, translated) {
+      const oLines = original.trim().split("\n");
+      const tLines = translated.trim().split("\n");
+      let result = "";
+      for (let i = 0; i < oLines.length; i++) {
+        result += `🗣️ ${oLines[i]}\n➡️ ${tLines[i] || ""}\n\n`;
+      }
+      return result;
     }
   </script>
 </body>
