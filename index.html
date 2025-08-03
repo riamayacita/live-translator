@@ -7,199 +7,183 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #f4f4f4;
-      padding: 20px;
-    }
-    h1 {
-      color: #2c3e50;
-      text-align: center;
+      margin: 20px;
     }
     textarea {
-      width: 100%;
-      height: 200px;
-      padding: 10px;
-      margin-bottom: 10px;
-      font-size: 16px;
-      resize: vertical;
+      width: 48%;
+      height: 300px;
+      margin: 1%;
+      font-size: 1rem;
     }
     select, button {
-      font-size: 16px;
       margin: 5px;
-      padding: 8px 12px;
+      padding: 10px;
+      font-size: 1rem;
     }
-    .output-box {
-      border: 1px solid #ccc;
-      padding: 15px;
-      background: #fff;
-      margin-bottom: 15px;
-      overflow-y: auto;
-      max-height: 300px;
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
     }
-    .button-group {
-      margin-bottom: 20px;
+    .output-container {
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
-
   <h1>Maya Live Language Translator App</h1>
 
-  <div class="button-group">
-    <label for="languageSelect">🎙️ Speech Input Language:</label>
-    <select id="languageSelect">
-      <option value="en-US">English</option>
-      <option value="it-IT">Italian</option>
-      <option value="es-ES">Spanish</option>
-      <option value="id-ID">Indonesian</option>
-      <option value="pt-PT">Portuguese</option>
-      <option value="fr-FR">French</option>
-      <option value="ja-JP">Japanese</option>
-      <option value="ko-KR">Korean</option>
-      <option value="vi-VN">Vietnamese</option>
-      <option value="ru-RU">Russian</option>
-      <option value="ig-NG">Igbo</option>
-      <option value="pl-PL">Polish</option>
-      <option value="de-DE">German</option>
-      <option value="hi-IN">Hindi</option>
-      <option value="zh-CN">Chinese</option>
-      <option value="th-TH">Thai</option>
-    </select>
-    <button onclick="startListening()">🎤 Start Listening</button>
+  <label for="inputLang">Transcribe From:</label>
+  <select id="inputLang">
+    <option value="en">English</option>
+    <option value="it">Italian</option>
+    <option value="es">Spanish</option>
+    <option value="id">Indonesian</option>
+    <option value="pt">Portuguese</option>
+    <option value="fr">French</option>
+    <option value="ja">Japanese</option>
+    <option value="ko">Korean</option>
+    <option value="vi">Vietnamese</option>
+    <option value="ru">Russian</option>
+    <option value="pl">Polish</option>
+    <option value="hi">Hindi</option>
+    <option value="zh">Chinese</option>
+    <option value="th">Thai</option>
+    <option value="de">German</option>
+    <option value="ig">Igbo</option>
+  </select>
+
+  <label for="outputLang">Translate To:</label>
+  <select id="outputLang">
+    <option value="en">English</option>
+    <option value="it">Italian</option>
+    <option value="es">Spanish</option>
+    <option value="id">Indonesian</option>
+    <option value="pt">Portuguese</option>
+    <option value="fr">French</option>
+    <option value="ja">Japanese</option>
+    <option value="ko">Korean</option>
+    <option value="vi">Vietnamese</option>
+    <option value="ru">Russian</option>
+    <option value="pl">Polish</option>
+    <option value="hi">Hindi</option>
+    <option value="zh">Chinese</option>
+    <option value="th">Thai</option>
+    <option value="de">German</option>
+    <option value="ig">Igbo</option>
+  </select>
+
+  <br/>
+
+  <button onclick="startListening()">Start Listening</button>
+  <button onclick="stopListening()">Stop Listening</button>
+  <button onclick="eraseText()">Erase</button>
+  <button onclick="saveText()">Save Text</button>
+  <button onclick="readTranslation()">🔊 Read Translation</button>
+
+  <div class="container">
+    <textarea id="originalText" placeholder="Speech to Text (Original)"></textarea>
+    <textarea id="translatedText" placeholder="Translation"></textarea>
   </div>
-
-  <textarea id="originalText" placeholder="Spoken or typed text will appear here..."></textarea>
-
-  <div class="button-group">
-    <label for="translateTo">🌐 Translate To:</label>
-    <select id="translateTo">
-      <option value="en">English</option>
-      <option value="it">Italian</option>
-      <option value="es">Spanish</option>
-      <option value="id">Indonesian</option>
-      <option value="pt">Portuguese</option>
-      <option value="fr">French</option>
-      <option value="ja">Japanese</option>
-      <option value="ko">Korean</option>
-      <option value="vi">Vietnamese</option>
-      <option value="ru">Russian</option>
-      <option value="ig">Igbo</option>
-      <option value="pl">Polish</option>
-      <option value="de">German</option>
-      <option value="hi">Hindi</option>
-      <option value="zh">Chinese</option>
-      <option value="th">Thai</option>
-    </select>
-    <button onclick="translateText()">🌍 Translate</button>
-    <button onclick="eraseText()">🧹 Erase</button>
-  </div>
-
-  <textarea id="translatedText" placeholder="Translation will appear here..."></textarea>
-
-  <div class="button-group">
-    <button onclick="readTranslation()">🔈 Read Translation</button>
-    <button onclick="saveTranslation()">💾 Save to TXT</button>
-  </div>
-
-  <h3>📝 Saved Translation:</h3>
-  <div class="output-box" id="savedTranslation"></div>
 
   <script>
-    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    const originalTextArea = document.getElementById("originalText");
+    const translatedTextArea = document.getElementById("translatedText");
+    const inputLang = document.getElementById("inputLang");
+    const outputLang = document.getElementById("outputLang");
+
+    let recognition;
+    if ("webkitSpeechRecognition" in window) {
+      recognition = new webkitSpeechRecognition();
+    } else if ("SpeechRecognition" in window) {
+      recognition = new SpeechRecognition();
+    }
+
+    if (recognition) {
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onresult = async (event) => {
+        let interimTranscript = "";
+        let finalTranscript = "";
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript + "\n";
+            originalTextArea.value += transcript.trim() + "\n";
+            translateText(transcript.trim());
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+      };
+    }
 
     function startListening() {
-      const language = document.getElementById("languageSelect").value;
-      recognition.lang = language;
-      recognition.start();
+      if (recognition) {
+        recognition.lang = inputLang.value || "en-US";
+        recognition.start();
+      }
     }
 
-    recognition.onresult = function (event) {
-      const result = event.results[0][0].transcript;
-      document.getElementById("originalText").value += result + ". ";
-    };
-
-    function translateText() {
-      const text = document.getElementById("originalText").value;
-      const targetLang = document.getElementById("translateTo").value;
-
-      fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`)
-        .then(response => response.json())
-        .then(data => {
-          const translation = data[0].map(pair => pair[0]).join("");
-          document.getElementById("translatedText").value = translation;
-          displaySentenceComparison(text, translation);
-        })
-        .catch(error => {
-          console.error("Translation error:", error);
-          alert("Translation failed.");
-        });
+    function stopListening() {
+      if (recognition) {
+        recognition.stop();
+      }
     }
 
-    function displaySentenceComparison(original, translated) {
-      const outputBox = document.getElementById("savedTranslation");
-      outputBox.innerHTML = "";
+    async function translateText(text) {
+      const from = inputLang.value;
+      const to = outputLang.value;
+      const url = `https://lingva.ml/api/v1/${from}/${to}/${encodeURIComponent(text)}`;
 
-      const originalSentences = original.split(/(?<=[.?!])\s+/);
-      const translatedSentences = translated.split(/(?<=[.?!])\s+/);
-
-      for (let i = 0; i < originalSentences.length; i++) {
-        const originalLine = originalSentences[i] || "";
-        const translatedLine = translatedSentences[i] || "";
-        const entry = document.createElement("div");
-        entry.innerHTML = `<strong>🗣️ ${originalLine}</strong><br>🌍 ${translatedLine}<br><br>`;
-        outputBox.appendChild(entry);
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        const translated = data.translation;
+        translatedTextArea.value += translated.trim() + "\n";
+      } catch (error) {
+        console.error("Translation error:", error);
       }
     }
 
     function eraseText() {
-      document.getElementById("originalText").value = "";
-      document.getElementById("translatedText").value = "";
-      document.getElementById("savedTranslation").innerHTML = "";
+      originalTextArea.value = "";
+      translatedTextArea.value = "";
     }
 
-    function saveTranslation() {
-      const saved = document.getElementById("savedTranslation").innerText;
-      const blob = new Blob([saved], { type: "text/plain;charset=utf-8" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = "maya_translation.txt";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    function saveText() {
+      const originalLines = originalTextArea.value.trim().split("\n");
+      const translatedLines = translatedTextArea.value.trim().split("\n");
+
+      let content = "";
+      for (let i = 0; i < Math.max(originalLines.length, translatedLines.length); i++) {
+        const original = originalLines[i] || "";
+        const translated = translatedLines[i] || "";
+        content += `Original: ${original}\nTranslation: ${translated}\n\n`;
+      }
+
+      const blob = new Blob([content], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "maya_translation.txt";
+      a.click();
+      URL.revokeObjectURL(url);
     }
 
     function readTranslation() {
-      const translatedText = document.getElementById("translatedText").value;
+      const text = translatedTextArea.value.trim();
       const synth = window.speechSynthesis;
-
-      if (!translatedText.trim()) {
-        alert('There is no translated text to read.');
-        return;
-      }
-
-      const langSelect = document.getElementById('translateTo');
-      const selectedLang = langSelect.value;
-
-      const utterance = new SpeechSynthesisUtterance(translatedText);
-      utterance.lang = selectedLang;
-
-      const voices = synth.getVoices();
-      const matchingVoice = voices.find(voice => voice.lang.startsWith(selectedLang));
-      if (matchingVoice) {
-        utterance.voice = matchingVoice;
-      } else {
-        console.warn(`No matching voice found for ${selectedLang}, using default.`);
-      }
-
-      synth.speak(utterance);
-    }
-
-    // Trigger voice loading for Chrome
-    if (speechSynthesis.onvoiceschanged !== undefined) {
-      speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = outputLang.value || "en";
+      synth.speak(utter);
     }
   </script>
-
 </body>
 </html>
