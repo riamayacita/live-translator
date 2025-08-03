@@ -73,7 +73,7 @@
   <h1>Maya Live Language Translator App</h1>
   <div class="container">
 
-    <!-- Language Selectors Added Here -->
+    <!-- Language Selectors -->
     <div>
       <label for="sourceLang">Source Language:</label>
       <select id="sourceLang">
@@ -177,13 +177,13 @@
       let sourceLang = document.getElementById("sourceLang").value;
       let targetLang = document.getElementById("targetLang").value;
 
-      // Use 'auto' detection with mymemory API by sending sourceLang as 'auto'
+      // Lingva API expects "auto" for source language detection
       if (sourceLang === 'auto') sourceLang = 'auto';
 
       try {
-        const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang}|${targetLang}`);
+        const response = await fetch(`https://lingva.ml/api/v1/${sourceLang}/${targetLang}/${encodeURIComponent(text)}`);
         const data = await response.json();
-        const translated = data.responseData.translatedText;
+        const translated = data.translation;
         document.getElementById("translated-text").value += translated + "\n";
 
         const savedBox = document.getElementById("saved-content");
