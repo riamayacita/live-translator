@@ -8,55 +8,53 @@
     body {
       font-family: Arial, sans-serif;
       padding: 20px;
-      background: #f0f0f0;
     }
-    h1 {
-      text-align: center;
-    }
-    select, textarea, button {
-      font-size: 1rem;
-      padding: 10px;
-      margin: 10px;
-    }
-    .container {
-      display: flex;
-      justify-content: space-between;
-      gap: 20px;
-    }
+
     textarea {
-      width: 100%;
-      height: 250px;
-      resize: vertical;
-    }
-    .box {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-    .controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: center;
-      margin-bottom: 15px;
-    }
-    #savedTranslations {
-      width: 100%;
-      margin-top: 20px;
+      width: 45%;
       height: 200px;
+      margin: 10px;
+      font-size: 16px;
+    }
+
+    .button {
+      margin: 5px;
+      padding: 10px 15px;
+      font-size: 16px;
+    }
+
+    #savedTranslations {
+      width: 90%;
+      height: 250px;
+      margin-top: 20px;
+      font-size: 16px;
+      white-space: pre-wrap;
     }
   </style>
 </head>
 <body>
   <h1>Maya Live Language Translator App</h1>
 
-  <div class="controls">
-    <label for="sourceLang">From:</label>
-    <select id="sourceLang">
-      <option value="auto">Detect</option>
+  <div>
+    <button class="button" onclick="startTranslation()">Start Translation</button>
+    <button class="button" onclick="stopTranslation()">Stop Translation</button>
+    <button class="button" onclick="startRecording()">Start Recording</button>
+    <button class="button" onclick="stopRecording()">Stop Recording</button>
+    <button class="button" onclick="clearText()">Erase</button>
+    <button class="button" onclick="saveToTxt()">Save as .txt</button>
+  </div>
+
+  <div style="display: flex; gap: 10px;">
+    <textarea id="transcribedText" placeholder="Transcribed Text..."></textarea>
+    <textarea id="translatedText" placeholder="Translated Text..."></textarea>
+  </div>
+
+  <div>
+    <label for="targetLanguage">Translate To:</label>
+    <select id="targetLanguage">
       <option value="en">English</option>
-      <option value="it">Italian</option>
       <option value="es">Spanish</option>
+      <option value="it">Italian</option>
       <option value="id">Indonesian</option>
       <option value="pt">Portuguese</option>
       <option value="fr">French</option>
@@ -64,52 +62,13 @@
       <option value="ko">Korean</option>
       <option value="vi">Vietnamese</option>
       <option value="ru">Russian</option>
+      <option value="ig">Igbo</option>
       <option value="pl">Polish</option>
-      <option value="hi">Hindi</option>
       <option value="de">German</option>
+      <option value="hi">Hindi</option>
       <option value="zh">Chinese</option>
       <option value="th">Thai</option>
     </select>
-
-    <label for="targetLang">To:</label>
-    <select id="targetLang">
-      <option value="en">English</option>
-      <option value="it">Italian</option>
-      <option value="es">Spanish</option>
-      <option value="id">Indonesian</option>
-      <option value="pt">Portuguese</option>
-      <option value="fr">French</option>
-      <option value="ja">Japanese</option>
-      <option value="ko">Korean</option>
-      <option value="vi">Vietnamese</option>
-      <option value="ru">Russian</option>
-      <option value="pl">Polish</option>
-      <option value="hi">Hindi</option>
-      <option value="de">German</option>
-      <option value="zh">Chinese</option>
-      <option value="th">Thai</option>
-    </select>
-  </div>
-
-  <div class="controls">
-    <button onclick="startTranslation()">Start Translation</button>
-    <button onclick="stopTranslation()">Stop Translation</button>
-    <button onclick="startRecording()">Start Recording</button>
-    <button onclick="stopRecording()">Stop Recording</button>
-    <button onclick="eraseText()">Erase</button>
-    <button onclick="saveToFile()">Save TXT</button>
-    <button onclick="downloadAudio()">Save Audio</button>
-  </div>
-
-  <div class="container">
-    <div class="box">
-      <label for="transcribedText">Transcribed Text:</label>
-      <textarea id="transcribedText" readonly></textarea>
-    </div>
-    <div class="box">
-      <label for="translatedText">Translated Text:</label>
-      <textarea id="translatedText" readonly></textarea>
-    </div>
   </div>
 
   <h3>Saved Translations:</h3>
@@ -117,109 +76,81 @@
 
   <script>
     let recognition;
-    let isTranslating = false;
-
-    const transcribed = document.getElementById("transcribedText");
-    const translated = document.getElementById("translatedText");
-    const saved = document.getElementById("savedTranslations");
-
-    function startTranslation() {
-      if (!('webkitSpeechRecognition' in window)) {
-        alert("Speech Recognition not supported.");
-        return;
-      }
-
-      recognition = new webkitSpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = false;
-      recognition.lang = document.getElementById("sourceLang").value === "auto" ? "en-US" : document.getElementById("sourceLang").value;
-
-      recognition.onresult = function (event) {
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            const spoken = event.results[i][0].transcript.trim();
-            transcribed.value += spoken + "\n";
-            translateText(spoken);
-          }
-        }
-      };
-
-      recognition.start();
-      isTranslating = true;
-    }
-
-    function stopTranslation() {
-      if (recognition && isTranslating) {
-        recognition.stop();
-        isTranslating = false;
-      }
-    }
-
-    async function translateText(text) {
-      const source = document.getElementById("sourceLang").value;
-      const target = document.getElementById("targetLang").value;
-      const url = `https://lingva.ml/api/v1/${source}/${target}/${encodeURIComponent(text)}`;
-
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        translated.value += data.translation + "\n";
-        saved.value += `${text} → ${data.translation}\n`;
-      } catch (error) {
-        console.error("Translation error:", error);
-      }
-    }
-
-    function eraseText() {
-      transcribed.value = "";
-      translated.value = "";
-      saved.value = "";
-    }
-
-    function saveToFile() {
-      const blob = new Blob([saved.value], { type: "text/plain" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "translations.txt";
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-
-    // Audio recording
     let mediaRecorder;
     let audioChunks = [];
 
-    async function startRecording() {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream);
-      audioChunks = [];
+    function startTranslation() {
+      recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.continuous = true;
+      recognition.interimResults = false;
+      recognition.lang = 'auto';
 
-      mediaRecorder.ondataavailable = e => {
-        audioChunks.push(e.data);
+      recognition.onresult = async (event) => {
+        const lastResult = event.results[event.results.length - 1][0].transcript;
+        document.getElementById('transcribedText').value += lastResult + '. ';
+
+        const targetLang = document.getElementById('targetLanguage').value;
+        const translation = await translateText(lastResult, targetLang);
+        document.getElementById('translatedText').value += translation + '. ';
+
+        // Save each pair
+        const savedBox = document.getElementById('savedTranslations');
+        savedBox.value += lastResult + '\n' + translation + '\n\n';
       };
 
-      mediaRecorder.start();
+      recognition.start();
+    }
+
+    function stopTranslation() {
+      if (recognition) recognition.stop();
+    }
+
+    async function translateText(text, targetLang) {
+      const res = await fetch(`https://lingva.ml/api/v1/auto/${targetLang}/${encodeURIComponent(text)}`);
+      const data = await res.json();
+      return data.translation;
+    }
+
+    function clearText() {
+      document.getElementById('transcribedText').value = '';
+      document.getElementById('translatedText').value = '';
+      document.getElementById('savedTranslations').value = '';
+    }
+
+    function saveToTxt() {
+      const text = document.getElementById('savedTranslations').value;
+      const blob = new Blob([text], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'translated_text.txt';
+      a.click();
+    }
+
+    function startRecording() {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = event => {
+          if (event.data.size > 0) audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(audioBlob);
+          a.download = 'recorded_audio.mp3';
+          a.click();
+        };
+
+        mediaRecorder.start();
+      });
     }
 
     function stopRecording() {
-      if (mediaRecorder) {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.stop();
-        mediaRecorder.onstop = () => {
-          const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-          const url = URL.createObjectURL(audioBlob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'recording.webm'; // mp3 conversion requires server-side support
-          a.click();
-          URL.revokeObjectURL(url);
-        };
       }
-    }
-
-    function downloadAudio() {
-      // fallback if stopRecording hasn't been pressed yet
-      stopRecording();
     }
   </script>
 </body>
