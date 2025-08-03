@@ -1,45 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Maya Live Language Translator App</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 40px;
-      background: #f4f4f4;
+      margin: 20px;
+      background: #f2f2f2;
     }
     h1 {
       text-align: center;
-      margin-bottom: 30px;
+      color: #333;
+    }
+    .controls {
+      text-align: center;
+      margin-bottom: 20px;
     }
     select, button {
-      padding: 8px;
       margin: 5px;
+      padding: 10px;
+      font-size: 16px;
+    }
+    .container {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
     }
     textarea {
       width: 100%;
-      height: 250px;
+      height: 300px;
       padding: 15px;
       font-size: 16px;
-      margin-bottom: 20px;
-      resize: vertical;
+      resize: none;
+      border: 1px solid #ccc;
+      background: #fff;
     }
-    .flex-container {
-      display: flex;
-      gap: 20px;
+    .box {
+      flex: 1 1 48%;
     }
-    .half {
-      width: 50%;
+    #savedOutput {
+      margin-top: 20px;
+      white-space: pre-wrap;
+      background: #fff;
+      padding: 15px;
+      border: 1px solid #ccc;
     }
   </style>
 </head>
 <body>
   <h1>Maya Live Language Translator App</h1>
 
-  <div>
-    <label for="inputLang">Transcribe Language:</label>
-    <select id="inputLang">
+  <div class="controls">
+    <select id="fromLang">
+      <option value="auto">Auto Detect</option>
       <option value="en">English</option>
       <option value="it">Italian</option>
       <option value="es">Spanish</option>
@@ -54,10 +70,10 @@
       <option value="pl">Polish</option>
       <option value="de">German</option>
       <option value="hi">Hindi</option>
+      <option value="zh">Chinese</option>
+      <option value="th">Thai</option>
     </select>
-
-    <label for="outputLang">Translate To:</label>
-    <select id="outputLang">
+    <select id="toLang">
       <option value="en">English</option>
       <option value="it">Italian</option>
       <option value="es">Spanish</option>
@@ -72,110 +88,111 @@
       <option value="pl">Polish</option>
       <option value="de">German</option>
       <option value="hi">Hindi</option>
+      <option value="zh">Chinese</option>
+      <option value="th">Thai</option>
     </select>
-
+    <br />
     <button onclick="startListening()">Start Listening</button>
     <button onclick="stopListening()">Stop Listening</button>
-    <button onclick="erase()">Erase</button>
-    <button onclick="save()">Save</button>
+    <button onclick="eraseText()">Erase</button>
+    <button onclick="saveText()">Save</button>
   </div>
 
-  <div class="flex-container">
-    <div class="half">
+  <div class="container">
+    <div class="box">
       <h3>Original Text</h3>
       <textarea id="originalText" readonly></textarea>
     </div>
-    <div class="half">
+    <div class="box">
       <h3>Translated Text</h3>
       <textarea id="translatedText" readonly></textarea>
     </div>
   </div>
 
+  <div id="savedOutput">
+    <h3>Saved Translation</h3>
+    <div id="savedText"></div>
+  </div>
+
   <script>
-    const originalText = document.getElementById("originalText");
-    const translatedText = document.getElementById("translatedText");
     let recognition;
-    let isListening = false;
+    let listening = false;
 
     function startListening() {
-      const lang = document.getElementById("inputLang").value;
-
       if (!('webkitSpeechRecognition' in window)) {
-        alert("Speech Recognition not supported");
+        alert("Your browser doesn't support Speech Recognition.");
         return;
       }
 
       recognition = new webkitSpeechRecognition();
-      recognition.lang = lang;
       recognition.continuous = true;
-      recognition.interimResults = false;
+      recognition.interimResults = true;
 
-      recognition.onresult = async (event) => {
-        const transcript = event.results[event.resultIndex][0].transcript.trim();
-        originalText.value += transcript + "\n";
-        const toLang = document.getElementById("outputLang").value;
-        const translation = await translateText(transcript, lang, toLang);
-        translatedText.value += translation + "\n";
-        speakTranslation(translation, toLang);
-      };
+      const fromLang = document.getElementById("fromLang").value;
+      recognition.lang = fromLang === "auto" ? "en-US" : fromLang;
 
-      recognition.onerror = (e) => console.error("Speech recognition error:", e);
-      recognition.onend = () => {
-        if (isListening) recognition.start(); // Restart if still listening
+      recognition.onresult = function (event) {
+        let finalTranscript = "";
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const transcript = event.results[i][0].transcript.trim();
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript + ". ";
+            document.getElementById("originalText").value += transcript + ".\n";
+            translateText(transcript);
+          }
+        }
       };
 
       recognition.start();
-      isListening = true;
+      listening = true;
     }
 
     function stopListening() {
-      if (recognition) {
+      if (recognition && listening) {
         recognition.stop();
-        isListening = false;
+        listening = false;
       }
     }
 
-    async function translateText(text, from, to) {
-      const url = `https://lingva.ml/api/v1/${from}/${to}/${encodeURIComponent(text)}`;
-      try {
-        const response = await fetch(url);
-        const data = await response.json();
-        return data.translation;
-      } catch (error) {
-        console.error("Translation error:", error);
-        return "[Translation Failed]";
+    function translateText(text) {
+      const fromLang = document.getElementById("fromLang").value;
+      const toLang = document.getElementById("toLang").value;
+
+      const url = `https://lingva.ml/api/v1/${fromLang}/${toLang}/${encodeURIComponent(text)}`;
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          const translated = data.translation;
+          document.getElementById("translatedText").value += translated + "\n";
+          speak(translated, toLang);
+        })
+        .catch(error => {
+          console.error("Translation error:", error);
+        });
+    }
+
+    function eraseText() {
+      document.getElementById("originalText").value = "";
+      document.getElementById("translatedText").value = "";
+      document.getElementById("savedText").innerHTML = "";
+    }
+
+    function saveText() {
+      const original = document.getElementById("originalText").value.split("\n").filter(Boolean);
+      const translated = document.getElementById("translatedText").value.split("\n").filter(Boolean);
+
+      let savedContent = "";
+      for (let i = 0; i < original.length; i++) {
+        savedContent += `<p><strong>${original[i]}</strong><br/>${translated[i] || ""}</p>`;
       }
+      document.getElementById("savedText").innerHTML = savedContent;
     }
 
-    function speakTranslation(text, lang) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = lang;
-      speechSynthesis.speak(utterance);
-    }
-
-    function erase() {
-      originalText.value = "";
-      translatedText.value = "";
-    }
-
-    function save() {
-      const blob = new Blob([pairSentences(originalText.value, translatedText.value)], { type: "text/plain;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "maya_translations.txt";
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-
-    function pairSentences(original, translated) {
-      const oLines = original.trim().split("\n");
-      const tLines = translated.trim().split("\n");
-      let result = "";
-      for (let i = 0; i < oLines.length; i++) {
-        result += `🗣️ ${oLines[i]}\n➡️ ${tLines[i] || ""}\n\n`;
-      }
-      return result;
+    function speak(text, lang) {
+      const synth = window.speechSynthesis;
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = lang;
+      synth.speak(utter);
     }
   </script>
 </body>
