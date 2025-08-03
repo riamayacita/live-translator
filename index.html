@@ -1,157 +1,191 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Maya Live Language Translator App</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       padding: 20px;
+      background-color: #f9f9f9;
     }
-
+    h1 {
+      text-align: center;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+    }
+    .selectors, .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
     textarea {
-      width: 45%;
+      width: 100%;
+      height: 150px;
+      font-size: 16px;
+      padding: 10px;
+    }
+    .output-container {
+      display: flex;
+      gap: 20px;
+      margin: 20px 0;
+      width: 100%;
+    }
+    .output-box {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .output-box textarea {
       height: 200px;
-      margin: 10px;
-      font-size: 16px;
+      resize: none;
     }
-
-    .button {
-      margin: 5px;
-      padding: 10px 15px;
-      font-size: 16px;
-    }
-
     #savedTranslations {
-      width: 90%;
-      height: 250px;
+      width: 100%;
+      height: 150px;
       margin-top: 20px;
-      font-size: 16px;
-      white-space: pre-wrap;
     }
   </style>
 </head>
+
 <body>
   <h1>Maya Live Language Translator App</h1>
+  <div class="container">
+    <div class="selectors">
+      <label for="sourceLang">Source:</label>
+      <select id="sourceLang">
+        <option value="auto">Detect Language</option>
+        <option value="en">English</option>
+        <option value="it">Italian</option>
+        <option value="es">Spanish</option>
+        <option value="id">Indonesian</option>
+        <option value="pt">Portuguese</option>
+        <option value="fr">French</option>
+        <option value="ja">Japanese</option>
+        <option value="ko">Korean</option>
+        <option value="vi">Vietnamese</option>
+        <option value="ru">Russian</option>
+        <option value="ig">Igbo</option>
+        <option value="pl">Polish</option>
+        <option value="de">German</option>
+        <option value="hi">Hindi</option>
+        <option value="zh">Chinese</option>
+        <option value="th">Thai</option>
+      </select>
 
-  <div>
-    <button class="button" onclick="startTranslation()">Start Translation</button>
-    <button class="button" onclick="stopTranslation()">Stop Translation</button>
-    <button class="button" onclick="startRecording()">Start Recording</button>
-    <button class="button" onclick="stopRecording()">Stop Recording</button>
-    <button class="button" onclick="clearText()">Erase</button>
-    <button class="button" onclick="saveToTxt()">Save as .txt</button>
+      <label for="targetLang">Target:</label>
+      <select id="targetLang">
+        <option value="en">English</option>
+        <option value="it">Italian</option>
+        <option value="es">Spanish</option>
+        <option value="id">Indonesian</option>
+        <option value="pt">Portuguese</option>
+        <option value="fr">French</option>
+        <option value="ja">Japanese</option>
+        <option value="ko">Korean</option>
+        <option value="vi">Vietnamese</option>
+        <option value="ru">Russian</option>
+        <option value="ig">Igbo</option>
+        <option value="pl">Polish</option>
+        <option value="de">German</option>
+        <option value="hi">Hindi</option>
+        <option value="zh">Chinese</option>
+        <option value="th">Thai</option>
+      </select>
+    </div>
+
+    <div class="controls">
+      <button onclick="startListening()">Start Translation</button>
+      <button onclick="stopListening()">Stop Translation</button>
+      <button onclick="eraseText()">Erase</button>
+      <button onclick="saveText()">Save to TXT</button>
+    </div>
+
+    <div class="output-container">
+      <div class="output-box">
+        <label>Transcribed Text:</label>
+        <textarea id="transcription" readonly></textarea>
+      </div>
+      <div class="output-box">
+        <label>Translation:</label>
+        <textarea id="translation" readonly></textarea>
+      </div>
+    </div>
+
+    <textarea id="savedTranslations" readonly></textarea>
   </div>
-
-  <div style="display: flex; gap: 10px;">
-    <textarea id="transcribedText" placeholder="Transcribed Text..."></textarea>
-    <textarea id="translatedText" placeholder="Translated Text..."></textarea>
-  </div>
-
-  <div>
-    <label for="targetLanguage">Translate To:</label>
-    <select id="targetLanguage">
-      <option value="en">English</option>
-      <option value="es">Spanish</option>
-      <option value="it">Italian</option>
-      <option value="id">Indonesian</option>
-      <option value="pt">Portuguese</option>
-      <option value="fr">French</option>
-      <option value="ja">Japanese</option>
-      <option value="ko">Korean</option>
-      <option value="vi">Vietnamese</option>
-      <option value="ru">Russian</option>
-      <option value="ig">Igbo</option>
-      <option value="pl">Polish</option>
-      <option value="de">German</option>
-      <option value="hi">Hindi</option>
-      <option value="zh">Chinese</option>
-      <option value="th">Thai</option>
-    </select>
-  </div>
-
-  <h3>Saved Translations:</h3>
-  <textarea id="savedTranslations" readonly></textarea>
 
   <script>
     let recognition;
-    let mediaRecorder;
-    let audioChunks = [];
+    let listening = false;
 
-    function startTranslation() {
-      recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    function startListening() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+      recognition.lang = document.getElementById("sourceLang").value;
       recognition.continuous = true;
-      recognition.interimResults = false;
-      recognition.lang = 'auto';
 
-      recognition.onresult = async (event) => {
-        const lastResult = event.results[event.results.length - 1][0].transcript;
-        document.getElementById('transcribedText').value += lastResult + '. ';
+      recognition.onresult = function(event) {
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          document.getElementById("transcription").value += transcript + " ";
+          translateText(transcript.trim());
+        }
+      };
 
-        const targetLang = document.getElementById('targetLanguage').value;
-        const translation = await translateText(lastResult, targetLang);
-        document.getElementById('translatedText').value += translation + '. ';
-
-        // Save each pair
-        const savedBox = document.getElementById('savedTranslations');
-        savedBox.value += lastResult + '\n' + translation + '\n\n';
+      recognition.onend = function() {
+        if (listening) recognition.start();
       };
 
       recognition.start();
+      listening = true;
     }
 
-    function stopTranslation() {
-      if (recognition) recognition.stop();
-    }
-
-    async function translateText(text, targetLang) {
-      const res = await fetch(`https://lingva.ml/api/v1/auto/${targetLang}/${encodeURIComponent(text)}`);
-      const data = await res.json();
-      return data.translation;
-    }
-
-    function clearText() {
-      document.getElementById('transcribedText').value = '';
-      document.getElementById('translatedText').value = '';
-      document.getElementById('savedTranslations').value = '';
-    }
-
-    function saveToTxt() {
-      const text = document.getElementById('savedTranslations').value;
-      const blob = new Blob([text], { type: 'text/plain' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'translated_text.txt';
-      a.click();
-    }
-
-    function startRecording() {
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        mediaRecorder = new MediaRecorder(stream);
-        audioChunks = [];
-
-        mediaRecorder.ondataavailable = event => {
-          if (event.data.size > 0) audioChunks.push(event.data);
-        };
-
-        mediaRecorder.onstop = () => {
-          const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
-          const a = document.createElement('a');
-          a.href = URL.createObjectURL(audioBlob);
-          a.download = 'recorded_audio.mp3';
-          a.click();
-        };
-
-        mediaRecorder.start();
-      });
-    }
-
-    function stopRecording() {
-      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-        mediaRecorder.stop();
+    function stopListening() {
+      if (recognition) {
+        recognition.stop();
       }
+      listening = false;
+    }
+
+    function translateText(text) {
+      const sourceLang = document.getElementById("sourceLang").value;
+      const targetLang = document.getElementById("targetLang").value;
+
+      fetch(`https://lingva.ml/api/v1/${sourceLang}/${targetLang}/${encodeURIComponent(text)}`)
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById("translation").value += data.translation + " ";
+          document.getElementById("savedTranslations").value += text + "\n" + data.translation + "\n\n";
+        })
+        .catch(error => console.error("Translation error:", error));
+    }
+
+    function eraseText() {
+      document.getElementById("transcription").value = "";
+      document.getElementById("translation").value = "";
+      document.getElementById("savedTranslations").value = "";
+    }
+
+    function saveText() {
+      const content = document.getElementById("savedTranslations").value;
+      const blob = new Blob([content], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "translations.txt";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     }
   </script>
 </body>
+
 </html>
