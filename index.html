@@ -2,345 +2,169 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Maya Live Language Translator App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Voice Translator</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #f4f4f4;
       padding: 20px;
     }
-    h1 {
-      text-align: center;
-      color: #333;
+    .btn {
+      padding: 10px 20px;
+      margin: 5px;
+      font-size: 16px;
+      cursor: pointer;
     }
-    .container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+    .highlight {
+      background-color: #ffffcc;
     }
-    .box {
-      width: 45%;
-      height: 200px;
-      margin: 10px;
+    #translated-text, #saved-content {
+      margin-top: 20px;
+    }
+    .translation-entry {
+      margin-bottom: 15px;
       padding: 10px;
       border: 1px solid #ccc;
-      background-color: white;
-      overflow-y: auto;
     }
-    .side-by-side {
-      display: flex;
-      justify-content: space-around;
-      width: 100%;
-    }
-    textarea {
-      width: 100%;
-      height: 100%;
-      border: none;
-      resize: none;
-      outline: none;
-      background: transparent;
-    }
-    .controls button {
-      margin: 5px;
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    select {
-      margin: 0 10px 20px 10px;
-      padding: 8px 12px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    #recording-indicator {
-      display: none;
-      width: 30px;
-      height: 30px;
-      vertical-align: middle;
-      margin-left: 10px;
-    }
-    .saved-box {
-      width: 90%;
-      margin-top: 20px;
-      padding: 10px;
-      background-color: #eef;
-      border: 1px solid #aac;
-    }
-
-    /* Responsive adjustments */
-    @media (max-width: 600px) {
-      .side-by-side {
-        flex-direction: column;
-        width: 100%;
-      }
-      .box {
-        width: 90% !important;
-        height: 150px !important;
-        margin: 10px auto;
-      }
-      textarea {
-        font-size: 14px;
-      }
-      .controls button {
-        padding: 8px 15px;
-        font-size: 14px;
-        margin: 4px 2px;
-      }
-      select {
-        width: 90%;
-        margin: 10px auto 20px auto;
-        display: block;
-      }
-      .container {
-        padding: 10px;
-      }
-      body {
-        padding: 10px;
-      }
+    .controls {
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
-  <h1>Maya Live Language Translator App</h1>
-  <div class="container">
-    <div>
-      <label for="sourceLang">Source Language:</label>
-      <select id="sourceLang">
-        <option value="auto">Detect Language</option>
-        <option value="en">English</option>
-        <option value="it">Italian</option>
-        <option value="es">Spanish</option>
-        <option value="id">Indonesian</option>
-        <option value="pt">Portuguese</option>
-        <option value="fr">French</option>
-        <option value="ja">Japanese</option>
-        <option value="ko">Korean</option>
-        <option value="vi">Vietnamese</option>
-        <option value="ru">Russian</option>
-        <option value="ig">Igbo</option>
-        <option value="pl">Polish</option>
-        <option value="de">German</option>
-        <option value="hi">Hindi</option>
-        <option value="zh">Chinese</option>
-        <option value="th">Thai</option>
-      </select>
-
-      <label for="targetLang">Target Language:</label>
-      <select id="targetLang">
-        <option value="" disabled selected>Select target language</option>
-        <option value="en">English</option>
-        <option value="it">Italian</option>
-        <option value="es">Spanish</option>
-        <option value="id">Indonesian</option>
-        <option value="pt">Portuguese</option>
-        <option value="fr">French</option>
-        <option value="ja">Japanese</option>
-        <option value="ko">Korean</option>
-        <option value="vi">Vietnamese</option>
-        <option value="ru">Russian</option>
-        <option value="ig">Igbo</option>
-        <option value="pl">Polish</option>
-        <option value="de">German</option>
-        <option value="hi">Hindi</option>
-        <option value="zh">Chinese</option>
-        <option value="th">Thai</option>
-      </select>
-    </div>
-
-    <div class="controls">
-      <button onclick="startTranslation()">Start Translation</button>
-      <button onclick="stopTranslation()">Stop Translation</button>
-      <button onclick="startRecording()">Start Recording</button>
-      <button onclick="pauseRecording()">Pause Recording</button>
-      <button onclick="resumeRecording()">Resume Recording</button>
-      <button onclick="stopRecording()">Stop Recording</button>
-      <button onclick="eraseText()">Erase</button>
-      <button onclick="saveAsText()">Save as .txt</button>
-      <img id="recording-indicator" src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Red_Circle.svg/1024px-Red_Circle.svg.png" alt="Recording" />
-    </div>
-
-    <div class="side-by-side">
-      <div class="box" id="transcribed-box">
-        <textarea id="transcribed-text" readonly></textarea>
-      </div>
-      <div class="box" id="translated-box">
-        <textarea id="translated-text" readonly></textarea>
-      </div>
-    </div>
-
-    <div class="saved-box" id="saved-translations">
-      <h3>Saved Translations:</h3>
-      <div id="saved-content"></div>
-    </div>
-  </div>
+  <h1>Voice Translator</h1>
+  <button id="start-btn" class="btn">Start</button>
+  <button id="stop-btn" class="btn">Stop</button>
+  <button id="save-btn" class="btn">Save</button>
+  <div id="translated-text"></div>
+  <div id="saved-content"></div>
 
   <script>
-    let recognizing = false;
     let recognition;
-    let mediaRecorder;
-    let audioChunks = [];
-    let audioBlob;
-    let isRecording = false;
-    let pause = false;
-    let currentUtterance = null;
+    let isRecognizing = false;
+    let savedText = [];
 
-    window.speechSynthesis.onvoiceschanged = () => {
-      speechSynthesis.getVoices();
-    };
-
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    function initializeRecognition() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.lang = 'auto';
+      if (!SpeechRecognition) {
+        alert("Your browser doesn't support Speech Recognition");
+        return;
+      }
 
-      recognition.onresult = function(event) {
-        let transcript = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            transcript += event.results[i][0].transcript;
-          }
-        }
-        if (transcript.trim()) {
-          document.getElementById("transcribed-text").value += transcript + "\n";
-          translateText(transcript);
-        }
+      recognition = new SpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+      recognition.continuous = true;
+
+      recognition.onresult = async (event) => {
+        const lastResult = event.results[event.results.length - 1];
+        const text = lastResult[0].transcript.trim();
+        const translated = await translateText(text);
+
+        displayTranslation(text, translated);
+        savedText.push({ original: text, translated });
+      };
+
+      recognition.onend = () => {
+        if (isRecognizing) recognition.start();
       };
     }
 
     async function translateText(text) {
-      let sourceLang = document.getElementById("sourceLang").value;
-      let targetLang = document.getElementById("targetLang").value;
-
-      if (!targetLang) {
-        alert("Please select a target language!");
-        return;
-      }
-
-      try {
-        const response = await fetch(`https://lingva.ml/api/v1/${sourceLang}/${targetLang}/${encodeURIComponent(text)}`);
-        const data = await response.json();
-        const translated = data.translation;
-        document.getElementById("translated-text").value += translated + "\n";
-
-        const savedBox = document.getElementById("saved-content");
-        const div = document.createElement("div");
-        div.innerHTML = `
-          <strong>${text}</strong><br>
-          <span>${translated}</span><br>
-          <button onclick="playTranslation(this)" data-lang="${targetLang}" data-text="${translated}">▶️ Play</button>
-          <button onclick="togglePause()">⏸️ Pause/Resume</button>
-        `;
-        savedBox.appendChild(div);
-      } catch (error) {
-        console.error("Translation error:", error);
-      }
+      // Dummy translation (replace this with an API call if needed)
+      return "Translated: " + text;
     }
 
-    function playTranslation(button) {
-      const text = button.getAttribute("data-text");
-      const lang = button.getAttribute("data-lang");
-      speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      const voices = speechSynthesis.getVoices();
-      // Find most natural matching voice by lang prefix
-      const matchedVoice = voices.find(voice => voice.lang.toLowerCase().startsWith(lang.toLowerCase()));
-      if (matchedVoice) utterance.voice = matchedVoice;
-      utterance.lang = matchedVoice ? matchedVoice.lang : lang;
-      currentUtterance = utterance;
-      speechSynthesis.speak(utterance);
-    }
+    function displayTranslation(original, translated) {
+      const container = document.getElementById("translated-text");
+      const savedContainer = document.getElementById("saved-content");
 
-    function togglePause() {
-      if (speechSynthesis.speaking) {
-        if (speechSynthesis.paused) {
+      const div = document.createElement("div");
+      div.className = "translation-entry";
+
+      const originalElem = document.createElement("strong");
+      originalElem.textContent = original;
+      div.appendChild(originalElem);
+      div.appendChild(document.createElement("br"));
+
+      const translatedElem = document.createElement("span");
+      translatedElem.textContent = translated;
+      div.appendChild(translatedElem);
+
+      // Add audio controls
+      const controls = document.createElement("div");
+      controls.className = "controls";
+
+      const utterance = new SpeechSynthesisUtterance(translated);
+      utterance.lang = "es-ES";
+
+      let isPaused = false;
+
+      const playBtn = document.createElement("button");
+      playBtn.textContent = "▶️ Play";
+      playBtn.className = "btn";
+      playBtn.onclick = () => {
+        speechSynthesis.cancel();
+        speechSynthesis.speak(utterance);
+        isPaused = false;
+      };
+
+      const pauseResumeBtn = document.createElement("button");
+      pauseResumeBtn.textContent = "⏸ Pause";
+      pauseResumeBtn.className = "btn";
+      pauseResumeBtn.onclick = () => {
+        if (isPaused) {
           speechSynthesis.resume();
+          pauseResumeBtn.textContent = "⏸ Pause";
         } else {
           speechSynthesis.pause();
+          pauseResumeBtn.textContent = "▶️ Resume";
         }
-      }
+        isPaused = !isPaused;
+      };
+
+      controls.appendChild(playBtn);
+      controls.appendChild(pauseResumeBtn);
+      div.appendChild(controls);
+
+      container.appendChild(div);
+      savedContainer.appendChild(div.cloneNode(true));
     }
 
-    function startRecording() {
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        mediaRecorder = new MediaRecorder(stream);
-        mediaRecorder.start();
-        isRecording = true;
-        document.getElementById("recording-indicator").style.display = "inline";
-
-        audioChunks = [];
-        mediaRecorder.addEventListener("dataavailable", event => {
-          audioChunks.push(event.data);
-        });
-
-        mediaRecorder.addEventListener("stop", () => {
-          audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
-          const a = document.createElement("a");
-          a.href = URL.createObjectURL(audioBlob);
-          a.download = "recording.mp3";
-          a.click();
-        });
-      });
+    function startRecognition() {
+      if (!recognition) initializeRecognition();
+      isRecognizing = true;
+      recognition.start();
     }
 
-    function pauseRecording() {
-      if (mediaRecorder && mediaRecorder.state === "recording") {
-        mediaRecorder.pause();
-        pause = true;
-        document.getElementById("recording-indicator").style.display = "none";
-      }
-    }
-
-    function resumeRecording() {
-      if (mediaRecorder && pause) {
-        mediaRecorder.resume();
-        pause = false;
-        document.getElementById("recording-indicator").style.display = "inline";
-      }
-    }
-
-    function stopRecording() {
-      if (mediaRecorder && isRecording) {
-        mediaRecorder.stop();
-        isRecording = false;
-        document.getElementById("recording-indicator").style.display = "none";
-      }
-    }
-
-    function startTranslation() {
-      if (recognition && !recognizing) {
-        let lang = document.getElementById("sourceLang").value;
-        recognition.lang = lang === "auto" ? "en-US" : lang + "-US";
-        recognition.start();
-        recognizing = true;
-        recognition.onend = function () {
-          if (recognizing) recognition.start();
-        };
-      }
-    }
-
-    function stopTranslation() {
-      if (recognition && recognizing) {
-        recognition.stop();
-        recognizing = false;
-      }
-    }
-
-    function eraseText() {
-      document.getElementById("transcribed-text").value = "";
-      document.getElementById("translated-text").value = "";
-      document.getElementById("saved-content").innerHTML = "";
+    function stopRecognition() {
+      isRecognizing = false;
+      if (recognition) recognition.stop();
     }
 
     function saveAsText() {
-      let content = document.getElementById("saved-content").innerText;
-      const blob = new Blob([content], { type: "text/plain" });
+      const savedDivs = document.getElementById("saved-content").children;
+      let textOnly = "";
+      for (let div of savedDivs) {
+        for (let node of div.childNodes) {
+          if (node.nodeType === Node.ELEMENT_NODE && node.tagName === "STRONG") {
+            textOnly += node.textContent + "\n";
+          }
+          if (node.nodeType === Node.ELEMENT_NODE && node.tagName === "SPAN") {
+            textOnly += node.textContent + "\n\n";
+          }
+        }
+      }
+      const blob = new Blob([textOnly], { type: "text/plain" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = "translations.txt";
       a.click();
     }
+
+    document.getElementById("start-btn").addEventListener("click", startRecognition);
+    document.getElementById("stop-btn").addEventListener("click", stopRecognition);
+    document.getElementById("save-btn").addEventListener("click", saveAsText);
   </script>
 </body>
 </html>
