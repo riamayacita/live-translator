@@ -76,29 +76,36 @@
       box-shadow: 0 0 4px rgba(41, 128, 185, 0.5);
     }
 
-    /* Controls - grouped */
+    /* Controls groups styling */
     .controls-group {
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 10px 15px;
+      margin-bottom: 12px;
+      background-color: #fafafa;
       display: flex;
       flex-wrap: wrap;
-      gap: 6px 8px; /* Reduced gap here */
+      gap: 6px 10px;
       justify-content: center;
-      margin-bottom: 10px;
     }
 
     .controls-group button {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      font-size: 0.9rem;
+      border-radius: 5px;
+      border: none;
       background-color: #34495e;
       color: #fff;
-      border: none;
-      border-radius: 6px;
-      padding: 8px 14px;
-      font-size: 0.9rem;
-      font-weight: 600;
       cursor: pointer;
-      transition: background-color 0.3s ease;
-      max-width: 160px;
-      flex: 1 1 auto;
+      min-width: 140px;
       box-shadow: 0 3px 6px rgb(52 73 94 / 0.4);
       user-select: none;
+      transition: background-color 0.3s ease;
+      font-weight: 600;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
     .controls-group button:hover {
@@ -109,6 +116,20 @@
       background-color: #222f3e;
       box-shadow: none;
       transform: translateY(1px);
+    }
+
+    /* Outline style for less primary buttons */
+    .controls-group button.outline {
+      background-color: transparent;
+      color: #34495e;
+      border: 1.5px solid #34495e;
+      box-shadow: none;
+    }
+
+    .controls-group button.outline:hover {
+      background-color: #34495e;
+      color: #fff;
+      box-shadow: 0 3px 6px rgb(52 73 94 / 0.4);
     }
 
     #recording-indicator {
@@ -215,6 +236,9 @@
       font-size: 0.9rem;
       transition: background-color 0.25s ease;
       user-select: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .saved-box button:hover {
@@ -317,23 +341,23 @@
 
     <!-- Translation buttons -->
     <div class="controls-group" aria-label="Translation Controls">
-      <button type="button" onclick="startTranslation()">Start Translation</button>
-      <button type="button" onclick="stopTranslation()">Stop Translation</button>
+      <button type="button" onclick="startTranslation()">🈯 Start Translation</button>
+      <button type="button" onclick="stopTranslation()">⏹ Stop Translation</button>
     </div>
 
     <!-- Recording buttons -->
     <div class="controls-group" aria-label="Recording Controls">
-      <button type="button" onclick="startRecording()">Start Recording</button>
-      <button type="button" onclick="pauseRecording()">Pause Recording</button>
-      <button type="button" onclick="resumeRecording()">Resume Recording</button>
-      <button type="button" onclick="stopRecording()">Stop Recording</button>
+      <button type="button" onclick="startRecording()">🎤 Start Recording</button>
+      <button type="button" onclick="pauseRecording()">⏸ Pause Recording</button>
+      <button type="button" onclick="resumeRecording()">▶ Resume Recording</button>
+      <button type="button" onclick="stopRecording()">■ Stop Recording</button>
       <img id="recording-indicator" src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Red_Circle.svg/1024px-Red_Circle.svg.png" alt="Recording indicator" />
     </div>
 
     <!-- Erase and Save buttons -->
     <div class="controls-group" aria-label="Erase and Save Controls" style="justify-content: center;">
-      <button type="button" onclick="eraseText()">Erase</button>
-      <button type="button" onclick="saveAsText()">Save as .txt</button>
+      <button class="outline" type="button" onclick="eraseText()">🗑 Erase</button>
+      <button class="outline" type="button" onclick="saveAsText()">💾 Save .txt</button>
     </div>
 
     <div class="side-by-side">
@@ -472,7 +496,7 @@
         mediaRecorder = new MediaRecorder(stream);
         mediaRecorder.start();
         isRecording = true;
-        requestWakeLock();
+        requestWakeLock(); // keep screen awake during recording
         document.getElementById("recording-indicator").style.display = "inline";
 
         audioChunks = [];
@@ -511,7 +535,7 @@
         mediaRecorder.stop();
         isRecording = false;
         document.getElementById("recording-indicator").style.display = "none";
-        releaseWakeLock();
+        releaseWakeLock(); // allow screen to dim after recording
       }
     }
 
@@ -521,7 +545,7 @@
         recognition.lang = lang === "auto" ? "en-US" : lang + "-US";
         recognition.start();
         recognizing = true;
-        requestWakeLock();
+        requestWakeLock(); // keep screen awake during translation
         recognition.onend = function () {
           if (recognizing) recognition.start();
         };
@@ -532,7 +556,7 @@
       if (recognition && recognizing) {
         recognition.stop();
         recognizing = false;
-        releaseWakeLock();
+        releaseWakeLock(); // allow screen to dim after translation
       }
     }
 
