@@ -2,100 +2,258 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Maya Live Language Translator App</title>
   <style>
+    /* Reset & base */
+    * {
+      box-sizing: border-box;
+    }
     body {
-      font-family: Arial, sans-serif;
-      background-color: #f4f4f4;
+      font-family: 'Poppins', Arial, sans-serif;
+      background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+      margin: 0;
       padding: 20px;
-    }
-    h1 {
-      text-align: center;
       color: #333;
-    }
-    .container {
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
     }
-    .box {
-      width: 45%;
-      height: 200px;
-      margin: 10px;
-      padding: 10px;
-      border: 1px solid #ccc;
-      background-color: white;
-      overflow-y: auto;
-    }
-    .side-by-side {
-      display: flex;
-      justify-content: space-around;
-      width: 100%;
-    }
-    textarea {
-      width: 100%;
-      height: 100%;
-      border: none;
-      resize: none;
-      outline: none;
-      background: transparent;
-    }
-    .controls button {
-      margin: 5px;
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    select {
-      margin: 0 10px 20px 10px;
-      padding: 8px 12px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    #recording-indicator {
-      display: none;
-      width: 30px;
-      height: 30px;
-      vertical-align: middle;
-      margin-left: 10px;
-    }
-    .saved-box {
-      width: 90%;
-      margin-top: 20px;
-      padding: 10px;
-      background-color: #eef;
-      border: 1px solid #aac;
+
+    h1 {
+      font-weight: 700;
+      font-size: 2.4rem;
+      margin-bottom: 15px;
+      color: #222;
+      text-align: center;
+      letter-spacing: 1.2px;
+      text-shadow: 0 1px 3px rgba(255 255 255 / 0.8);
     }
 
-    @media (max-width: 600px) {
-      .side-by-side {
-        flex-direction: column;
-        width: 100%;
+    .container {
+      width: 100%;
+      max-width: 1000px;
+      background: #fff;
+      border-radius: 15px;
+      padding: 25px 30px 40px;
+      box-shadow: 0 8px 20px rgb(0 0 0 / 0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    label {
+      font-weight: 600;
+      margin-right: 10px;
+      color: #555;
+      user-select: none;
+    }
+
+    select {
+      border-radius: 25px;
+      border: 1.8px solid #ddd;
+      padding: 10px 18px;
+      font-size: 1rem;
+      color: #444;
+      background: #fafafa;
+      margin-right: 25px;
+      cursor: pointer;
+      transition: border-color 0.25s ease;
+      min-width: 140px;
+    }
+    select:hover, select:focus {
+      border-color: #ff79c6;
+      outline: none;
+      background: #fff0f7;
+    }
+
+    .controls {
+      margin: 20px 0 25px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 14px;
+      width: 100%;
+      max-width: 800px;
+    }
+    .controls button {
+      background: #ff79c6;
+      border: none;
+      border-radius: 30px;
+      color: white;
+      padding: 12px 28px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgb(255 121 198 / 0.6);
+      transition: background 0.3s ease, transform 0.15s ease;
+      flex: 1 1 140px;
+      max-width: 160px;
+    }
+    .controls button:hover {
+      background: #ff4fa1;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgb(255 79 161 / 0.8);
+    }
+    .controls button:active {
+      transform: translateY(1px);
+      box-shadow: none;
+    }
+
+    #recording-indicator {
+      width: 30px;
+      height: 30px;
+      margin-left: 15px;
+      vertical-align: middle;
+      display: none;
+      filter: drop-shadow(0 0 1.5px #ff385c);
+    }
+
+    .side-by-side {
+      display: flex;
+      justify-content: space-between;
+      gap: 25px;
+      width: 100%;
+      flex-wrap: wrap;
+      user-select: text;
+    }
+
+    .box {
+      flex: 1 1 300px;
+      min-width: 280px;
+      height: 230px;
+      background: #fff0fb;
+      border-radius: 15px;
+      box-shadow: 0 6px 18px rgb(255 121 198 / 0.25);
+      border: 1.5px solid #ff79c6;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: box-shadow 0.3s ease;
+    }
+    .box:hover {
+      box-shadow: 0 10px 28px rgb(255 121 198 / 0.45);
+    }
+    textarea {
+      flex: 1;
+      border: none;
+      outline: none;
+      resize: none;
+      background: transparent;
+      padding: 18px 22px;
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: #333;
+      line-height: 1.5;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow-y: auto;
+      caret-color: #ff79c6;
+    }
+
+    .saved-box {
+      width: 100%;
+      margin-top: 35px;
+      padding: 20px;
+      background: #ffe6f2;
+      border: 2px solid #ff79c6;
+      border-radius: 18px;
+      box-shadow: 0 5px 18px rgb(255 121 198 / 0.3);
+      max-height: 280px;
+      overflow-y: auto;
+      color: #4a164a;
+      font-weight: 600;
+    }
+    .saved-box h3 {
+      margin-top: 0;
+      font-size: 1.5rem;
+      letter-spacing: 1px;
+      text-align: center;
+      color: #bb3f8f;
+    }
+    .saved-box div {
+      margin-top: 12px;
+      padding: 8px 12px;
+      background: #ffd6f0;
+      border-radius: 12px;
+      box-shadow: inset 0 0 5px rgb(255 121 198 / 0.15);
+    }
+    .saved-box button {
+      margin-top: 6px;
+      margin-right: 6px;
+      border: none;
+      border-radius: 20px;
+      background: #bb3f8f;
+      color: #fff;
+      cursor: pointer;
+      padding: 6px 14px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: background 0.25s ease;
+    }
+    .saved-box button:hover {
+      background: #ff79c6;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .container {
+        padding: 20px 15px 30px;
       }
       .box {
-        width: 90% !important;
-        height: 150px !important;
-        margin: 10px auto;
-      }
-      textarea {
-        font-size: 14px;
+        height: 180px;
       }
       .controls button {
-        padding: 8px 15px;
-        font-size: 14px;
-        margin: 4px 2px;
+        flex: 1 1 130px;
+        max-width: none;
       }
-      select {
-        width: 90%;
-        margin: 10px auto 20px auto;
-        display: block;
+    }
+    @media (max-width: 600px) {
+      body {
+        padding: 12px 8px;
       }
       .container {
-        padding: 10px;
+        max-width: 100%;
+        border-radius: 12px;
+        padding: 15px 15px 25px;
       }
-      body {
-        padding: 10px;
+      h1 {
+        font-size: 1.9rem;
+      }
+      select {
+        min-width: 120px;
+        margin-right: 15px;
+        padding: 8px 14px;
+        font-size: 0.95rem;
+      }
+      .controls {
+        gap: 12px;
+      }
+      .controls button {
+        font-size: 1rem;
+        padding: 10px 18px;
+        flex: 1 1 100%;
+        max-width: 100%;
+      }
+      .side-by-side {
+        flex-direction: column;
+        gap: 18px;
+      }
+      .box {
+        height: 150px;
+        min-width: 100%;
+      }
+      textarea {
+        font-size: 1rem;
+        padding: 12px 16px;
+      }
+      .saved-box {
+        max-height: 200px;
+        font-size: 0.9rem;
+      }
+      .saved-box button {
+        font-size: 0.85rem;
+        padding: 5px 12px;
       }
     }
   </style>
@@ -161,10 +319,10 @@
 
     <div class="side-by-side">
       <div class="box" id="transcribed-box">
-        <textarea id="transcribed-text" readonly></textarea>
+        <textarea id="transcribed-text" readonly placeholder="Transcribed text appears here..."></textarea>
       </div>
       <div class="box" id="translated-box">
-        <textarea id="translated-text" readonly></textarea>
+        <textarea id="translated-text" readonly placeholder="Translated text appears here..."></textarea>
       </div>
     </div>
 
