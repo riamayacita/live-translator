@@ -28,15 +28,10 @@
       background-color: white;
       overflow-y: auto;
     }
-    #live-box {
-      border: 2px solid #f88;
-      background-color: #fff5f5;
-    }
     .side-by-side {
       display: flex;
       justify-content: space-around;
       width: 100%;
-      flex-wrap: wrap;
     }
     textarea {
       width: 100%;
@@ -72,6 +67,7 @@
       background-color: #eef;
       border: 1px solid #aac;
     }
+
     @media (max-width: 600px) {
       .side-by-side {
         flex-direction: column;
@@ -164,9 +160,6 @@
     </div>
 
     <div class="side-by-side">
-      <div class="box" id="live-box">
-        <textarea id="live-text" readonly></textarea>
-      </div>
       <div class="box" id="transcribed-box">
         <textarea id="transcribed-text" readonly></textarea>
       </div>
@@ -191,6 +184,7 @@
     let pause = false;
     let currentUtterance = null;
 
+    // 🔋 Wake Lock API Setup
     let wakeLock = null;
     let wakeLockCounter = 0;
 
@@ -228,27 +222,18 @@
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       recognition = new SpeechRecognition();
       recognition.continuous = true;
-      recognition.interimResults = true;
       recognition.lang = 'auto';
 
       recognition.onresult = function(event) {
-        let interimTranscript = '';
-        let finalTranscript = '';
-
+        let transcript = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript;
-          } else {
-            interimTranscript += event.results[i][0].transcript;
+            transcript += event.results[i][0].transcript;
           }
         }
-
-        document.getElementById("live-text").value = interimTranscript;
-
-        if (finalTranscript.trim()) {
-          document.getElementById("transcribed-text").value += finalTranscript + "\n";
-          document.getElementById("live-text").value = "";
-          translateText(finalTranscript);
+        if (transcript.trim()) {
+          document.getElementById("transcribed-text").value += transcript + "\n";
+          translateText(transcript);
         }
       };
     }
@@ -310,7 +295,7 @@
         mediaRecorder = new MediaRecorder(stream);
         mediaRecorder.start();
         isRecording = true;
-        requestWakeLock();
+        requestWakeLock(); // 🔋 keep screen awake during recording
         document.getElementById("recording-indicator").style.display = "inline";
 
         audioChunks = [];
@@ -349,7 +334,7 @@
         mediaRecorder.stop();
         isRecording = false;
         document.getElementById("recording-indicator").style.display = "none";
-        releaseWakeLock();
+        releaseWakeLock(); // 🔋 allow screen to dim after recording
       }
     }
 
@@ -359,7 +344,7 @@
         recognition.lang = lang === "auto" ? "en-US" : lang + "-US";
         recognition.start();
         recognizing = true;
-        requestWakeLock();
+        requestWakeLock(); // 🔋 keep screen awake during translation
         recognition.onend = function () {
           if (recognizing) recognition.start();
         };
@@ -370,7 +355,7 @@
       if (recognition && recognizing) {
         recognition.stop();
         recognizing = false;
-        releaseWakeLock();
+        releaseWakeLock(); // 🔋 allow screen to dim after translation
       }
     }
 
@@ -378,7 +363,6 @@
       document.getElementById("transcribed-text").value = "";
       document.getElementById("translated-text").value = "";
       document.getElementById("saved-content").innerHTML = "";
-      document.getElementById("live-text").value = "";
     }
 
     function saveAsText() {
