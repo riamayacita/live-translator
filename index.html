@@ -68,7 +68,6 @@
       border: 1px solid #aac;
     }
 
-    /* Responsive adjustments */
     @media (max-width: 600px) {
       .side-by-side {
         flex-direction: column;
@@ -185,6 +184,36 @@
     let pause = false;
     let currentUtterance = null;
 
+    // 🔋 Wake Lock API Setup
+    let wakeLock = null;
+    let wakeLockCounter = 0;
+
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator && !wakeLock) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', () => {
+            wakeLock = null;
+            console.log("Wake Lock was released");
+          });
+          console.log("Wake Lock is active");
+        }
+        wakeLockCounter++;
+      } catch (err) {
+        console.error("Wake Lock error:", err);
+      }
+    }
+
+    function releaseWakeLock() {
+      wakeLockCounter--;
+      if (wakeLock && wakeLockCounter <= 0) {
+        wakeLock.release();
+        wakeLock = null;
+        wakeLockCounter = 0;
+        console.log("Wake Lock manually released");
+      }
+    }
+
     window.speechSynthesis.onvoiceschanged = () => {
       speechSynthesis.getVoices();
     };
@@ -244,7 +273,6 @@
       speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       const voices = speechSynthesis.getVoices();
-      // Find most natural matching voice by lang prefix
       const matchedVoice = voices.find(voice => voice.lang.toLowerCase().startsWith(lang.toLowerCase()));
       if (matchedVoice) utterance.voice = matchedVoice;
       utterance.lang = matchedVoice ? matchedVoice.lang : lang;
@@ -267,6 +295,7 @@
         mediaRecorder = new MediaRecorder(stream);
         mediaRecorder.start();
         isRecording = true;
+        requestWakeLock(); // 🔋 keep screen awake during recording
         document.getElementById("recording-indicator").style.display = "inline";
 
         audioChunks = [];
@@ -305,6 +334,7 @@
         mediaRecorder.stop();
         isRecording = false;
         document.getElementById("recording-indicator").style.display = "none";
+        releaseWakeLock(); // 🔋 allow screen to dim after recording
       }
     }
 
@@ -314,6 +344,7 @@
         recognition.lang = lang === "auto" ? "en-US" : lang + "-US";
         recognition.start();
         recognizing = true;
+        requestWakeLock(); // 🔋 keep screen awake during translation
         recognition.onend = function () {
           if (recognizing) recognition.start();
         };
@@ -324,6 +355,7 @@
       if (recognition && recognizing) {
         recognition.stop();
         recognizing = false;
+        releaseWakeLock(); // 🔋 allow screen to dim after translation
       }
     }
 
