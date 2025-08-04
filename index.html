@@ -212,7 +212,22 @@
       speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       const voices = speechSynthesis.getVoices();
-      const matchedVoice = voices.find(voice => voice.lang.toLowerCase().startsWith(lang.toLowerCase()));
+
+      // Try to find the most natural voice matching the language code:
+      // Prefer non-default voices with the language prefix match
+      let matchedVoice = null;
+      for (const voice of voices) {
+        // match language code ignoring region and case, e.g. "en", "en-US" matches "en"
+        if (voice.lang.toLowerCase().startsWith(lang.toLowerCase()) && !voice.default) {
+          matchedVoice = voice;
+          break;
+        }
+      }
+      // fallback to any voice with language match if no non-default found
+      if (!matchedVoice) {
+        matchedVoice = voices.find(v => v.lang.toLowerCase().startsWith(lang.toLowerCase()));
+      }
+
       if (matchedVoice) utterance.voice = matchedVoice;
       utterance.lang = matchedVoice ? matchedVoice.lang : lang;
       currentUtterance = utterance;
