@@ -2,164 +2,175 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Voice Translator</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       font-family: Arial, sans-serif;
-      padding: 10px;
-      background: #f7f7f7;
+      padding: 1em;
+      background: #f4f4f4;
     }
-    h1 {
-      text-align: center;
-    }
-    select, button, textarea {
-      font-size: 1em;
-      margin: 5px 0;
-      padding: 10px;
-      width: 100%;
-      box-sizing: border-box;
-    }
-    #translations div {
+    .container {
+      max-width: 700px;
+      margin: auto;
       background: white;
-      margin: 10px 0;
-      padding: 10px;
-      border-radius: 5px;
+      padding: 1em;
+      border-radius: 8px;
     }
-    .controls {
+    textarea {
+      width: 100%;
+      height: 100px;
+    }
+    select, button {
+      margin-top: 0.5em;
+      padding: 0.5em;
+      width: 100%;
+    }
+    .translation-section {
+      background: #eef;
+      padding: 1em;
+      margin-top: 1em;
+      border-radius: 6px;
+    }
+    .audio-controls {
       display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: center;
+      gap: 0.5em;
+      margin-top: 0.5em;
     }
-    .controls button {
-      flex: 1;
-    }
-    @media (max-width: 600px) {
-      h1 {
-        font-size: 1.5em;
+    @media screen and (max-width: 480px) {
+      .audio-controls {
+        flex-direction: column;
       }
     }
   </style>
 </head>
 <body>
-  <h1>Voice Translator</h1>
-
-  <label for="sourceLang">Source Language:</label>
+<div class="container">
+  <h2>Voice Translator</h2>
+  <button onclick="startRecognition()">🎤 Start Recording</button>
+  <button onclick="stopRecognition()">🛑 Stop Recording</button>
+  <br><br>
+  <label>Source Language:</label>
   <select id="sourceLang">
     <option value="auto">Detect Language</option>
     <option value="en">English</option>
     <option value="es">Spanish</option>
-    <option value="fr">French</option>
     <option value="id">Indonesian</option>
     <option value="it">Italian</option>
-    <option value="de">German</option>
-    <option value="pt">Portuguese</option>
+    <!-- Add more if needed -->
   </select>
 
-  <label for="targetLang">Target Language:</label>
+  <label>Target Language:</label>
   <select id="targetLang">
     <option value="es">Spanish</option>
     <option value="en">English</option>
-    <option value="fr">French</option>
     <option value="id">Indonesian</option>
     <option value="it">Italian</option>
-    <option value="de">German</option>
-    <option value="pt">Portuguese</option>
+    <!-- Add more if needed -->
   </select>
 
-  <div class="controls">
-    <button onclick="startRecognition()">Start</button>
-    <button onclick="stopRecognition()">Stop</button>
-    <button onclick="downloadText()">Download</button>
+  <br><br>
+  <label>Original:</label>
+  <textarea id="inputText" placeholder="Speak or type..."></textarea>
+  <button onclick="translateText()">Translate</button>
+
+  <div class="translation-section" id="translationOutput" style="display: none;">
+    <h4>Translation:</h4>
+    <p id="translatedText"></p>
+    <div class="audio-controls">
+      <button onclick="speakTranslation()">▶️ Play</button>
+      <button onclick="pauseSpeech()">⏸️ Pause</button>
+      <button onclick="resumeSpeech()">▶️ Resume</button>
+    </div>
+    <button onclick="downloadTranslation()">💾 Download Text</button>
   </div>
+</div>
 
-  <div id="translations"></div>
+<script>
+  let recognition;
+  let synth = window.speechSynthesis;
+  let utterance;
 
-  <script>
-    const translations = [];
-    let recognition;
-    let isRecognizing = false;
-
-    function startRecognition() {
-      if (!('webkitSpeechRecognition' in window)) {
-        alert('Speech recognition not supported in this browser.');
-        return;
-      }
-
-      recognition = new webkitSpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = false;
-
-      const sourceLang = document.getElementById('sourceLang').value;
-      recognition.lang = sourceLang === 'auto' ? 'en-US' : sourceLang;
-
-      recognition.onresult = async function (event) {
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            const text = event.results[i][0].transcript;
-            const translatedText = await translateText(text);
-            addTranslation(text, translatedText);
-          }
-        }
-      };
-
-      recognition.start();
-      isRecognizing = true;
+  function startRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Speech Recognition not supported");
+      return;
     }
 
-    function stopRecognition() {
-      if (recognition && isRecognizing) {
-        recognition.stop();
-        isRecognizing = false;
-      }
+    recognition = new SpeechRecognition();
+    recognition.lang = document.getElementById("sourceLang").value === "auto" ? "en-US" : document.getElementById("sourceLang").value;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = function(event) {
+      const transcript = event.results[0][0].transcript;
+      document.getElementById("inputText").value = transcript;
+      translateText();
+    };
+
+    recognition.start();
+  }
+
+  function stopRecognition() {
+    if (recognition) {
+      recognition.stop();
+    }
+  }
+
+  async function translateText() {
+    const text = document.getElementById("inputText").value.trim();
+    const source = document.getElementById("sourceLang").value;
+    const target = document.getElementById("targetLang").value;
+    if (!text) return;
+
+    const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${source}&tl=${target}&dt=t&q=${encodeURIComponent(text)}`);
+    const data = await res.json();
+    const translated = data[0].map(d => d[0]).join(" ");
+    document.getElementById("translatedText").innerText = translated;
+    document.getElementById("translationOutput").style.display = "block";
+  }
+
+  function speakTranslation() {
+    const text = document.getElementById("translatedText").innerText;
+    const lang = document.getElementById("targetLang").value;
+    if (synth.speaking) synth.cancel();
+    utterance = new SpeechSynthesisUtterance(text);
+
+    const voices = synth.getVoices();
+    utterance.lang = lang;
+
+    // Pick the best matching non-default and natural voice
+    const matchingVoices = voices.filter(v => v.lang.startsWith(lang));
+    if (matchingVoices.length > 0) {
+      const naturalVoice = matchingVoices.find(v => !v.name.toLowerCase().includes("google") && !v.name.toLowerCase().includes("default")) || matchingVoices[0];
+      utterance.voice = naturalVoice;
     }
 
-    async function translateText(text) {
-      const targetLang = document.getElementById('targetLang').value;
-      const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|${targetLang}`);
-      const data = await response.json();
-      return data.responseData.translatedText;
-    }
+    synth.speak(utterance);
+  }
 
-    function addTranslation(original, translated) {
-      const div = document.createElement('div');
-      div.innerHTML = `
-        <strong>Original:</strong> ${original}<br>
-        <strong>Translation:</strong> <span class="translated">${translated}</span><br>
-        <button onclick="speakTranslation(this)">🔊 Play</button>
-      `;
-      document.getElementById('translations').appendChild(div);
-      translations.push({ original, translated });
-    }
+  function pauseSpeech() {
+    if (synth.speaking && !synth.paused) synth.pause();
+  }
 
-    function speakTranslation(button) {
-      const text = button.parentElement.querySelector(".translated").textContent;
-      const lang = document.getElementById("targetLang").value;
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = lang;
+  function resumeSpeech() {
+    if (synth.paused) synth.resume();
+  }
 
-      const voices = speechSynthesis.getVoices();
-      const matchingVoice = voices.find(v => v.lang.startsWith(lang));
-      if (matchingVoice) utterance.voice = matchingVoice;
+  function downloadTranslation() {
+    const original = document.getElementById("inputText").value.trim();
+    const translated = document.getElementById("translatedText").innerText.trim();
+    const textToSave = `Original:\n${original}\n\nTranslation:\n${translated}`;
+    const blob = new Blob([textToSave], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "translation.txt";
+    a.click();
+  }
 
-      speechSynthesis.speak(utterance);
-    }
-
-    function downloadText() {
-      let content = '';
-      translations.forEach(t => {
-        content += `Original: ${t.original}\nTranslation: ${t.translated}\n\n`;
-      });
-
-      const blob = new Blob([content], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'translations.txt';
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-  </script>
+  // Ensure voices are loaded
+  window.speechSynthesis.onvoiceschanged = () => {};
+</script>
 </body>
 </html>
