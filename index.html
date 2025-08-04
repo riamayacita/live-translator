@@ -118,8 +118,8 @@
     </div>
 
     <div class="controls">
-      <button onclick="startTranslation()">Start Translation</button>
-      <button onclick="stopTranslation()">Stop Translation</button>
+      <button ontouchend="startTranslation()" onclick="startTranslation()">Start Translation</button>
+      <button ontouchend="stopTranslation()" onclick="stopTranslation()">Stop Translation</button>
       <button onclick="startRecording()">Start Recording</button>
       <button onclick="pauseRecording()">Pause Recording</button>
       <button onclick="resumeRecording()">Resume Recording</button>
@@ -157,7 +157,7 @@
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       recognition = new SpeechRecognition();
       recognition.continuous = true;
-      recognition.lang = 'auto';
+      recognition.interimResults = false;
 
       recognition.onresult = function(event) {
         let transcript = '';
@@ -171,13 +171,18 @@
           translateText(transcript);
         }
       };
+
+      recognition.onend = function () {
+        if (recognizing) {
+          recognition.start(); // Restart for continuous recognition
+        }
+      };
     }
 
     async function translateText(text) {
       let sourceLang = document.getElementById("sourceLang").value;
       let targetLang = document.getElementById("targetLang").value;
 
-      // Lingva API for translation
       if (sourceLang === 'auto') sourceLang = 'auto';
 
       try {
@@ -190,10 +195,26 @@
         const p = document.createElement("p");
         p.innerHTML = `<strong>${text}</strong><br>${translated}`;
         savedBox.appendChild(p);
+
+        // Speak the translated text
+        speakText(translated, targetLang);
       } catch (error) {
         console.error("Translation error:", error);
       }
     }
+
+    function speakText(text, lang) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      const voices = speechSynthesis.getVoices();
+      const matchedVoice = voices.find(voice => voice.lang.toLowerCase().startsWith(lang.toLowerCase()));
+      if (matchedVoice) utterance.voice = matchedVoice;
+      utterance.lang = matchedVoice ? matchedVoice.lang : lang;
+      speechSynthesis.speak(utterance);
+    }
+
+    window.speechSynthesis.onvoiceschanged = () => {
+      speechSynthesis.getVoices(); // Preload voices for mobile
+    };
 
     function startRecording() {
       navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
@@ -243,7 +264,8 @@
 
     function startTranslation() {
       if (recognition && !recognizing) {
-        recognition.lang = document.getElementById("sourceLang").value === "auto" ? "en-US" : document.getElementById("sourceLang").value;
+        let lang = document.getElementById("sourceLang").value;
+        recognition.lang = lang === "auto" ? "en-US" : lang + "-US";
         recognition.start();
         recognizing = true;
       }
