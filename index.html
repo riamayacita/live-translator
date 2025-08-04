@@ -175,179 +175,240 @@
     </div>
   </div>
 
-  <script>
-    let recognizing = false;
-    let recognition;
-    let mediaRecorder;
-    let audioChunks = [];
-    let audioBlob;
-    let isRecording = false;
-    let pause = false;
-    let currentUtterance = null;
+ <script>
+  let recognizing = false;
+  let recognition;
+  let mediaRecorder;
+  let audioChunks = [];
+  let audioBlob;
+  let isRecording = false;
+  let pause = false;
+  let currentUtterance = null;
+  let wakeLock = null;
 
-    window.speechSynthesis.onvoiceschanged = () => {
-      speechSynthesis.getVoices();
-    };
+  window.speechSynthesis.onvoiceschanged = () => {
+    speechSynthesis.getVoices();
+  };
 
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.lang = 'auto';
+  async function requestWakeLock() {
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => {
+          console.log('Wake Lock was released');
+        });
+        console.log('Wake Lock is active');
+      }
+    } catch (err) {
+      console.error(`${err.name}, ${err.message}`);
+    }
+  }
 
-      recognition.onresult = function(event) {
-        let transcript = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            transcript += event.results[i][0].transcript;
-          }
+  function releaseWakeLock() {
+    if (wakeLock !== null) {
+      wakeLock.release();
+      wakeLock = null;
+    }
+  }
+
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;  // <-- Added for real-time feedback
+    recognition.lang = 'auto';
+
+    recognition.onresult = function(event) {
+      let finalTranscript = '';
+      let interimTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        let transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
         }
-        if (transcript.trim()) {
-          document.getElementById("transcribed-text").value += transcript + "\n";
-          translateText(transcript);
+      }
+      if (interimTranscript) {
+        // Replace last line with interim text for live feedback
+        // To avoid overwriting all text, here we just set interim text alone:
+        // (This can be adjusted as needed)
+        const transcribedArea = document.getElementById("transcribed-text");
+        let currentText = transcribedArea.value;
+        // Remove last interim line if exists (simple heuristic)
+        let lines = currentText.split('\n');
+        if (lines.length > 0 && lines[lines.length - 1].startsWith(interimTranscript)) {
+          lines.pop();
+        }
+        transcribedArea.value = lines.join('\n') + (lines.length ? '\n' : '') + interimTranscript;
+      }
+      if (finalTranscript.trim()) {
+        document.getElementById("transcribed-text").value += finalTranscript + "\n";
+        translateText(finalTranscript);
+      }
+    };
+  }
+
+  async function translateText(text) {
+    let sourceLang = document.getElementById("sourceLang").value;
+    let targetLang = document.getElementById("targetLang").value;
+
+    if (!targetLang) {
+      alert("Please select a target language!");
+      return;
+    }
+
+    try {
+      const response = await fetch(`https://lingva.ml/api/v1/${sourceLang}/${targetLang}/${encodeURIComponent(text)}`);
+      const data = await response.json();
+      const translated = data.translation;
+      document.getElementById("translated-text").value += translated + "\n";
+
+      const savedBox = document.getElementById("saved-content");
+      const div = document.createElement("div");
+      div.innerHTML = `
+        <strong>${text}</strong><br>
+        <span>${translated}</span><br>
+        <button onclick="playTranslation(this)" data-lang="${targetLang}" data-text="${translated}">▶️ Play</button>
+        <button onclick="togglePause()">⏸️ Pause/Resume</button>
+      `;
+      savedBox.appendChild(div);
+    } catch (error) {
+      console.error("Translation error:", error);
+    }
+  }
+
+  function playTranslation(button) {
+    const text = button.getAttribute("data-text");
+    const lang = button.getAttribute("data-lang");
+    speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    const voices = speechSynthesis.getVoices();
+    const matchedVoice = voices.find(voice => voice.lang.toLowerCase().startsWith(lang.toLowerCase()));
+    if (matchedVoice) utterance.voice = matchedVoice;
+    utterance.lang = matchedVoice ? matchedVoice.lang : lang;
+    currentUtterance = utterance;
+    speechSynthesis.speak(utterance);
+  }
+
+  function togglePause() {
+    if (speechSynthesis.speaking) {
+      if (speechSynthesis.paused) {
+        speechSynthesis.resume();
+      } else {
+        speechSynthesis.pause();
+      }
+    }
+  }
+
+  async function startRecording() {
+    try {
+      const permissionStatus = await navigator.permissions.query({ name: 'microphone' });
+      if (permissionStatus.state === 'denied') {
+        alert("Microphone access has been denied. Please enable microphone permission in your browser settings.");
+        return;
+      }
+      // User will be prompted if permissionStatus.state === 'prompt'
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.start();
+      isRecording = true;
+      document.getElementById("recording-indicator").style.display = "inline";
+
+      audioChunks = [];
+      mediaRecorder.addEventListener("dataavailable", event => {
+        audioChunks.push(event.data);
+      });
+
+      mediaRecorder.addEventListener("stop", () => {
+        audioBlob = new Blob(audioChunks, { type: 'audio/webm' }); // Changed to audio/webm for Android compatibility
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(audioBlob);
+        a.download = "recording.webm";
+        a.click();
+      });
+
+      await requestWakeLock(); // Keep screen awake during recording
+    } catch (err) {
+      alert("Microphone permission is required to start recording.");
+      console.error(err);
+    }
+  }
+
+  function pauseRecording() {
+    if (mediaRecorder && mediaRecorder.state === "recording") {
+      mediaRecorder.pause();
+      pause = true;
+      document.getElementById("recording-indicator").style.display = "none";
+    }
+  }
+
+  function resumeRecording() {
+    if (mediaRecorder && pause) {
+      mediaRecorder.resume();
+      pause = false;
+      document.getElementById("recording-indicator").style.display = "inline";
+    }
+  }
+
+  function stopRecording() {
+    if (mediaRecorder && isRecording) {
+      mediaRecorder.stop();
+      isRecording = false;
+      document.getElementById("recording-indicator").style.display = "none";
+      releaseWakeLock();  // Release wake lock when recording stops
+    }
+  }
+
+  function startTranslation() {
+    if (recognition && !recognizing) {
+      let lang = document.getElementById("sourceLang").value;
+      recognition.lang = lang === "auto" ? "en-US" : lang + "-US";
+      recognition.start();
+      recognizing = true;
+      requestWakeLock(); // Keep screen awake during translation
+      recognition.onend = function () {
+        if (recognizing) {
+          setTimeout(() => recognition.start(), 500);
+        } else {
+          releaseWakeLock(); // Release if stopped
         }
       };
     }
+  }
 
-    async function translateText(text) {
-      let sourceLang = document.getElementById("sourceLang").value;
-      let targetLang = document.getElementById("targetLang").value;
-
-      if (!targetLang) {
-        alert("Please select a target language!");
-        return;
-      }
-
-      try {
-        const response = await fetch(`https://lingva.ml/api/v1/${sourceLang}/${targetLang}/${encodeURIComponent(text)}`);
-        const data = await response.json();
-        const translated = data.translation;
-        document.getElementById("translated-text").value += translated + "\n";
-
-        const savedBox = document.getElementById("saved-content");
-        const div = document.createElement("div");
-        div.innerHTML = `
-          <strong>${text}</strong><br>
-          <span>${translated}</span><br>
-          <button onclick="playTranslation(this)" data-lang="${targetLang}" data-text="${translated}">▶️ Play</button>
-          <button onclick="togglePause()">⏸️ Pause/Resume</button>
-        `;
-        savedBox.appendChild(div);
-      } catch (error) {
-        console.error("Translation error:", error);
-      }
+  function stopTranslation() {
+    if (recognition && recognizing) {
+      recognition.stop();
+      recognizing = false;
+      releaseWakeLock(); // Release wake lock when translation stops
     }
+  }
 
-    function playTranslation(button) {
-      const text = button.getAttribute("data-text");
-      const lang = button.getAttribute("data-lang");
-      speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      const voices = speechSynthesis.getVoices();
-      const matchedVoice = voices.find(voice => voice.lang.toLowerCase().startsWith(lang.toLowerCase()));
-      if (matchedVoice) utterance.voice = matchedVoice;
-      utterance.lang = matchedVoice ? matchedVoice.lang : lang;
-      currentUtterance = utterance;
-      speechSynthesis.speak(utterance);
-    }
+  function eraseText() {
+    document.getElementById("transcribed-text").value = "";
+    document.getElementById("translated-text").value = "";
+    document.getElementById("saved-content").innerHTML = "";
+  }
 
-    function togglePause() {
-      if (speechSynthesis.speaking) {
-        if (speechSynthesis.paused) {
-          speechSynthesis.resume();
-        } else {
-          speechSynthesis.pause();
-        }
-      }
-    }
+  function saveAsText() {
+    const savedContent = document.querySelectorAll("#saved-content > div");
+    let content = "";
 
-    function startRecording() {
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        mediaRecorder = new MediaRecorder(stream);
-        mediaRecorder.start();
-        isRecording = true;
-        document.getElementById("recording-indicator").style.display = "inline";
+    savedContent.forEach(div => {
+      const strongText = div.querySelector("strong")?.innerText || "";
+      const spanText = div.querySelector("span")?.innerText || "";
+      content += `${strongText}\n${spanText}\n\n`;
+    });
 
-        audioChunks = [];
-        mediaRecorder.addEventListener("dataavailable", event => {
-          audioChunks.push(event.data);
-        });
+    const blob = new Blob([content.trim()], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "translations.txt";
+    a.click();
+  }
+</script>
 
-        mediaRecorder.addEventListener("stop", () => {
-          audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
-          const a = document.createElement("a");
-          a.href = URL.createObjectURL(audioBlob);
-          a.download = "recording.mp3";
-          a.click();
-        });
-      });
-    }
-
-    function pauseRecording() {
-      if (mediaRecorder && mediaRecorder.state === "recording") {
-        mediaRecorder.pause();
-        pause = true;
-        document.getElementById("recording-indicator").style.display = "none";
-      }
-    }
-
-    function resumeRecording() {
-      if (mediaRecorder && pause) {
-        mediaRecorder.resume();
-        pause = false;
-        document.getElementById("recording-indicator").style.display = "inline";
-      }
-    }
-
-    function stopRecording() {
-      if (mediaRecorder && isRecording) {
-        mediaRecorder.stop();
-        isRecording = false;
-        document.getElementById("recording-indicator").style.display = "none";
-      }
-    }
-
-    function startTranslation() {
-      if (recognition && !recognizing) {
-        let lang = document.getElementById("sourceLang").value;
-        recognition.lang = lang === "auto" ? "en-US" : lang + "-US";
-        recognition.start();
-        recognizing = true;
-        recognition.onend = function () {
-          if (recognizing) recognition.start();
-        };
-      }
-    }
-
-    function stopTranslation() {
-      if (recognition && recognizing) {
-        recognition.stop();
-        recognizing = false;
-      }
-    }
-
-    function eraseText() {
-      document.getElementById("transcribed-text").value = "";
-      document.getElementById("translated-text").value = "";
-      document.getElementById("saved-content").innerHTML = "";
-    }
-
-    function saveAsText() {
-      const savedContent = document.querySelectorAll("#saved-content > div");
-      let content = "";
-
-      savedContent.forEach(div => {
-        const strongText = div.querySelector("strong")?.innerText || "";
-        const spanText = div.querySelector("span")?.innerText || "";
-        content += `${strongText}\n${spanText}\n\n`;
-      });
-
-      const blob = new Blob([content.trim()], { type: "text/plain" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "translations.txt";
-      a.click();
-    }
-  </script>
 </body>
 </html>
