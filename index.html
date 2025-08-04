@@ -76,36 +76,37 @@
       box-shadow: 0 0 4px rgba(41, 128, 185, 0.5);
     }
 
-    /* Controls */
-    .controls {
+    /* Controls - grouped */
+    .controls-group {
       display: flex;
       flex-wrap: wrap;
-      gap: 12px 15px;
+      gap: 10px 12px;
       justify-content: center;
+      margin-bottom: 10px;
     }
 
-    button {
-      background-color: #2980b9;
+    .controls-group button {
+      background-color: #34495e;
       color: #fff;
       border: none;
       border-radius: 6px;
-      padding: 11px 22px;
-      font-size: 1rem;
+      padding: 8px 14px;
+      font-size: 0.9rem;
       font-weight: 600;
       cursor: pointer;
       transition: background-color 0.3s ease;
-      flex: 1 1 140px;
       max-width: 160px;
-      box-shadow: 0 3px 7px rgb(41 128 185 / 0.4);
+      flex: 1 1 auto;
+      box-shadow: 0 3px 6px rgb(52 73 94 / 0.4);
       user-select: none;
     }
 
-    button:hover {
-      background-color: #1c5d8b;
+    .controls-group button:hover {
+      background-color: #2c3e50;
     }
 
-    button:active {
-      background-color: #154466;
+    .controls-group button:active {
+      background-color: #222f3e;
       box-shadow: none;
       transform: translateY(1px);
     }
@@ -231,9 +232,9 @@
         min-width: unset;
         height: 180px;
       }
-      .controls button {
+      .controls-group button {
         max-width: 100%;
-        flex: 1 1 120px;
+        flex: 1 1 140px;
       }
     }
 
@@ -253,10 +254,10 @@
         flex-direction: column;
         align-items: flex-start;
       }
-      .controls {
-        gap: 10px;
+      .controls-group {
+        gap: 8px;
       }
-      .controls button {
+      .controls-group button {
         flex: 1 1 100%;
         max-width: 100%;
       }
@@ -314,16 +315,25 @@
       </select>
     </div>
 
-    <div class="controls" role="group" aria-label="Control Buttons">
+    <!-- Translation buttons -->
+    <div class="controls-group" aria-label="Translation Controls">
       <button type="button" onclick="startTranslation()">Start Translation</button>
       <button type="button" onclick="stopTranslation()">Stop Translation</button>
+    </div>
+
+    <!-- Recording buttons -->
+    <div class="controls-group" aria-label="Recording Controls">
       <button type="button" onclick="startRecording()">Start Recording</button>
       <button type="button" onclick="pauseRecording()">Pause Recording</button>
       <button type="button" onclick="resumeRecording()">Resume Recording</button>
       <button type="button" onclick="stopRecording()">Stop Recording</button>
+      <img id="recording-indicator" src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Red_Circle.svg/1024px-Red_Circle.svg.png" alt="Recording indicator" />
+    </div>
+
+    <!-- Erase and Save buttons -->
+    <div class="controls-group" aria-label="Erase and Save Controls" style="justify-content: center;">
       <button type="button" onclick="eraseText()">Erase</button>
       <button type="button" onclick="saveAsText()">Save as .txt</button>
-      <img id="recording-indicator" src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Red_Circle.svg/1024px-Red_Circle.svg.png" alt="Recording indicator" />
     </div>
 
     <div class="side-by-side">
@@ -422,12 +432,11 @@
 
         const savedBox = document.getElementById("saved-content");
         const div = document.createElement("div");
-        div.setAttribute('role', 'listitem');
         div.innerHTML = `
-          <strong>${text}</strong>
-          <span>${translated}</span>
-          <button onclick="playTranslation(this)" data-lang="${targetLang}" data-text="${translated}" aria-label="Play translated text">▶️ Play</button>
-          <button onclick="togglePause()" aria-label="Pause or resume speech synthesis">⏸️ Pause/Resume</button>
+          <strong>${text}</strong><br>
+          <span>${translated}</span><br>
+          <button onclick="playTranslation(this)" data-lang="${targetLang}" data-text="${translated}">▶️ Play</button>
+          <button onclick="togglePause()">⏸️ Pause/Resume</button>
         `;
         savedBox.appendChild(div);
       } catch (error) {
