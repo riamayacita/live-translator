@@ -64,4 +64,283 @@
       width: 90%;
       margin-top: 20px;
       padding: 10px;
-      bac
+      background-color: #eef;
+      border: 1px solid #aac;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 600px) {
+      .side-by-side {
+        flex-direction: column;
+        width: 100%;
+      }
+      .box {
+        width: 90% !important;
+        height: 150px !important;
+        margin: 10px auto;
+      }
+      textarea {
+        font-size: 14px;
+      }
+      .controls button {
+        padding: 8px 15px;
+        font-size: 14px;
+        margin: 4px 2px;
+      }
+      select {
+        width: 90%;
+        margin: 10px auto 20px auto;
+        display: block;
+      }
+      .container {
+        padding: 10px;
+      }
+      body {
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Maya Live Language Translator App</h1>
+  <div class="container">
+    <div>
+      <label for="sourceLang">Source Language:</label>
+      <select id="sourceLang">
+        <option value="auto">Detect Language</option>
+        <option value="en">English</option>
+        <option value="it">Italian</option>
+        <option value="es">Spanish</option>
+        <option value="id">Indonesian</option>
+        <option value="pt">Portuguese</option>
+        <option value="fr">French</option>
+        <option value="ja">Japanese</option>
+        <option value="ko">Korean</option>
+        <option value="vi">Vietnamese</option>
+        <option value="ru">Russian</option>
+        <option value="ig">Igbo</option>
+        <option value="pl">Polish</option>
+        <option value="de">German</option>
+        <option value="hi">Hindi</option>
+        <option value="zh">Chinese</option>
+        <option value="th">Thai</option>
+      </select>
+
+      <label for="targetLang">Target Language:</label>
+      <select id="targetLang">
+        <option value="" disabled selected>Select target language</option>
+        <option value="en">English</option>
+        <option value="it">Italian</option>
+        <option value="es">Spanish</option>
+        <option value="id">Indonesian</option>
+        <option value="pt">Portuguese</option>
+        <option value="fr">French</option>
+        <option value="ja">Japanese</option>
+        <option value="ko">Korean</option>
+        <option value="vi">Vietnamese</option>
+        <option value="ru">Russian</option>
+        <option value="ig">Igbo</option>
+        <option value="pl">Polish</option>
+        <option value="de">German</option>
+        <option value="hi">Hindi</option>
+        <option value="zh">Chinese</option>
+        <option value="th">Thai</option>
+      </select>
+    </div>
+
+    <div class="controls">
+      <button onclick="startTranslation()">Start Translation</button>
+      <button onclick="stopTranslation()">Stop Translation</button>
+      <button onclick="startRecording()">Start Recording</button>
+      <button onclick="pauseRecording()">Pause Recording</button>
+      <button onclick="resumeRecording()">Resume Recording</button>
+      <button onclick="stopRecording()">Stop Recording</button>
+      <button onclick="eraseText()">Erase</button>
+      <button onclick="saveAsText()">Save as .txt</button>
+      <img id="recording-indicator" src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Red_Circle.svg/1024px-Red_Circle.svg.png" alt="Recording" />
+    </div>
+
+    <div class="side-by-side">
+      <div class="box" id="transcribed-box">
+        <textarea id="transcribed-text" readonly></textarea>
+      </div>
+      <div class="box" id="translated-box">
+        <textarea id="translated-text" readonly></textarea>
+      </div>
+    </div>
+
+    <div class="saved-box" id="saved-translations">
+      <h3>Saved Translations:</h3>
+      <div id="saved-content"></div>
+    </div>
+  </div>
+
+  <script>
+    let recognizing = false;
+    let recognition;
+    let mediaRecorder;
+    let audioChunks = [];
+    let audioBlob;
+    let isRecording = false;
+    let pause = false;
+    let currentUtterance = null;
+
+    window.speechSynthesis.onvoiceschanged = () => {
+      speechSynthesis.getVoices();
+    };
+
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.lang = 'auto';
+
+      recognition.onresult = function(event) {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            transcript += event.results[i][0].transcript;
+          }
+        }
+        if (transcript.trim()) {
+          document.getElementById("transcribed-text").value += transcript + "\n";
+          translateText(transcript);
+        }
+      };
+    }
+
+    async function translateText(text) {
+      let sourceLang = document.getElementById("sourceLang").value;
+      let targetLang = document.getElementById("targetLang").value;
+
+      if (!targetLang) {
+        alert("Please select a target language!");
+        return;
+      }
+
+      try {
+        const response = await fetch(`https://lingva.ml/api/v1/${sourceLang}/${targetLang}/${encodeURIComponent(text)}`);
+        const data = await response.json();
+        const translated = data.translation;
+        document.getElementById("translated-text").value += translated + "\n";
+
+        const savedBox = document.getElementById("saved-content");
+        const div = document.createElement("div");
+        div.innerHTML = `
+          <strong>${text}</strong><br>
+          <span>${translated}</span><br>
+          <button onclick="playTranslation(this)" data-lang="${targetLang}" data-text="${translated}">▶️ Play</button>
+          <button onclick="togglePause()">⏸️ Pause/Resume</button>
+        `;
+        savedBox.appendChild(div);
+      } catch (error) {
+        console.error("Translation error:", error);
+      }
+    }
+
+    function playTranslation(button) {
+      const text = button.getAttribute("data-text");
+      const lang = button.getAttribute("data-lang");
+      speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      const voices = speechSynthesis.getVoices();
+      // Find most natural matching voice by lang prefix
+      const matchedVoice = voices.find(voice => voice.lang.toLowerCase().startsWith(lang.toLowerCase()));
+      if (matchedVoice) utterance.voice = matchedVoice;
+      utterance.lang = matchedVoice ? matchedVoice.lang : lang;
+      currentUtterance = utterance;
+      speechSynthesis.speak(utterance);
+    }
+
+    function togglePause() {
+      if (speechSynthesis.speaking) {
+        if (speechSynthesis.paused) {
+          speechSynthesis.resume();
+        } else {
+          speechSynthesis.pause();
+        }
+      }
+    }
+
+    function startRecording() {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.start();
+        isRecording = true;
+        document.getElementById("recording-indicator").style.display = "inline";
+
+        audioChunks = [];
+        mediaRecorder.addEventListener("dataavailable", event => {
+          audioChunks.push(event.data);
+        });
+
+        mediaRecorder.addEventListener("stop", () => {
+          audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(audioBlob);
+          a.download = "recording.mp3";
+          a.click();
+        });
+      });
+    }
+
+    function pauseRecording() {
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.pause();
+        pause = true;
+        document.getElementById("recording-indicator").style.display = "none";
+      }
+    }
+
+    function resumeRecording() {
+      if (mediaRecorder && pause) {
+        mediaRecorder.resume();
+        pause = false;
+        document.getElementById("recording-indicator").style.display = "inline";
+      }
+    }
+
+    function stopRecording() {
+      if (mediaRecorder && isRecording) {
+        mediaRecorder.stop();
+        isRecording = false;
+        document.getElementById("recording-indicator").style.display = "none";
+      }
+    }
+
+    function startTranslation() {
+      if (recognition && !recognizing) {
+        let lang = document.getElementById("sourceLang").value;
+        recognition.lang = lang === "auto" ? "en-US" : lang + "-US";
+        recognition.start();
+        recognizing = true;
+        recognition.onend = function () {
+          if (recognizing) recognition.start();
+        };
+      }
+    }
+
+    function stopTranslation() {
+      if (recognition && recognizing) {
+        recognition.stop();
+        recognizing = false;
+      }
+    }
+
+    function eraseText() {
+      document.getElementById("transcribed-text").value = "";
+      document.getElementById("translated-text").value = "";
+      document.getElementById("saved-content").innerHTML = "";
+    }
+
+    function saveAsText() {
+      let content = document.getElementById("saved-content").innerText;
+      const blob = new Blob([content], { type: "text/plain" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "translations.txt";
+      a.click();
+    }
+  </script>
+</body>
+</html>
