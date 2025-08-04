@@ -78,16 +78,17 @@
 
     /* Controls groups styling */
     .controls-group {
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      padding: 8px 12px;
-      margin-bottom: 12px;
-      background-color: #fafafa;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px 6px; /* smaller gaps between buttons */
-      justify-content: center;
-    }
+    /* Remove border and background */
+    border: none;
+    background-color: transparent;
+    padding: 0;
+    margin-bottom: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 6px; /* Slightly bigger gaps for visual clarity without boxes */
+    justify-content: center;
+}
+
 
     .controls-group button {
       display: flex;
