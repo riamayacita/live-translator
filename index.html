@@ -80,12 +80,12 @@
     .controls-group {
       border: 1px solid #ddd;
       border-radius: 6px;
-      padding: 10px 15px;
-      margin-bottom: 1px;
+      padding: 8px 12px;
+      margin-bottom: 12px;
       background-color: #fafafa;
       display: flex;
       flex-wrap: wrap;
-      gap: 1px 1px;
+      gap: 4px 6px; /* smaller gaps between buttons */
       justify-content: center;
     }
 
@@ -93,14 +93,14 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      padding: 7px 14px;
+      padding: 6px 10px; /* slightly smaller padding for simpler look */
       font-size: 0.9rem;
       border-radius: 5px;
       border: none;
       background-color: #34495e;
       color: #fff;
       cursor: pointer;
-      min-width: 140px;
+      min-width: 130px;
       box-shadow: 0 3px 6px rgb(52 73 94 / 0.4);
       user-select: none;
       transition: background-color 0.3s ease;
@@ -258,7 +258,7 @@
       }
       .controls-group button {
         max-width: 100%;
-        flex: 1 1 140px;
+        flex: 1 1 130px;
       }
     }
 
@@ -279,7 +279,7 @@
         align-items: flex-start;
       }
       .controls-group {
-        gap: 6px 6px;
+        gap: 4px 4px;
       }
       .controls-group button {
         flex: 1 1 100%;
@@ -351,28 +351,28 @@
       <button type="button" onclick="pauseRecording()">⏸ Pause Recording</button>
       <button type="button" onclick="resumeRecording()">▶ Resume Recording</button>
       <button type="button" onclick="stopRecording()">■ Stop Recording</button>
-      <img id="recording-indicator" src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Red_Circle.svg/1024px-Red_Circle.svg.png" alt="Recording indicator" />
+      <img id="recording-indicator" src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Red_Circle.svg/1024px-Red_Circle.svg.png" alt="Recording Indicator" aria-live="polite" />
     </div>
 
     <!-- Erase and Save buttons -->
-    <div class="controls-group" aria-label="Erase and Save Controls" style="justify-content: center;">
-      <button class="outline" type="button" onclick="eraseText()">🗑 Erase</button>
-      <button class="outline" type="button" onclick="saveAsText()">💾 Save .txt</button>
+    <div class="controls-group" aria-label="Erase and Save Controls">
+      <button type="button" class="outline" onclick="eraseText()">🗑 Erase</button>
+      <button type="button" class="outline" onclick="saveAsText()">💾 Save as .txt</button>
     </div>
 
     <div class="side-by-side">
-      <div class="box" id="transcribed-box">
-        <textarea id="transcribed-text" readonly placeholder="Transcribed text will appear here..."></textarea>
+      <div class="box" id="transcribed-box" aria-label="Transcribed Text">
+        <textarea id="transcribed-text" readonly placeholder="Transcribed speech will appear here..."></textarea>
       </div>
-      <div class="box" id="translated-box">
+      <div class="box" id="translated-box" aria-label="Translated Text">
         <textarea id="translated-text" readonly placeholder="Translated text will appear here..."></textarea>
       </div>
     </div>
 
-    <section class="saved-box" aria-label="Saved Translations">
+    <div class="saved-box" id="saved-translations" aria-live="polite" aria-atomic="true">
       <h3>Saved Translations:</h3>
-      <div id="saved-content" role="list"></div>
-    </section>
+      <div id="saved-content"></div>
+    </div>
   </div>
 
   <script>
