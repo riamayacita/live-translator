@@ -286,15 +286,31 @@
     margin-bottom: 12px;
   }
 
-  .controls-group {
+   .controls-group {
     flex-direction: column;
     gap: 6px;
     width: 100%;
   }
 
   .controls-group button {
-    width: 100%;
-    max-width: 100%;
+    padding: 5px 8px;
+    font-size: 0.8rem;
+    border-radius: 4px;
+    width: auto;
+    min-width: 100px;
+    align-self: center;
+  }
+     
+ .controls-group button.outline {
+    padding: 5px 8px;
+    font-size: 0.75rem;
+    min-width: 100px;
+  }
+
+  .saved-box button {
+    font-size: 0.7rem;
+    padding: 4px 8px;
+    border-radius: 4px;
   }
 
   .box {
