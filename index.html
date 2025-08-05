@@ -49,6 +49,10 @@ h1 {
   gap: 1.5rem 2.5rem;
   align-items: center;
   justify-content: center;
+  width: 100%; /* Ensure it does not exceed container */
+  box-sizing: border-box;
+  overflow-x: auto; /* Enables horizontal scroll if needed */
+  padding-bottom: 5px;
 }
 
 label {
@@ -264,10 +268,23 @@ textarea::placeholder {
   }
 }
 
+/* Mobile adjustments */
 @media (max-width: 480px) {
-  .container {
-    padding: 20px 15px;
+  .lang-selectors {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    overflow-x: unset;
   }
+
+  select {
+    width: 100%;
+  }
+
+  label {
+    width: 100%;
+  }
+}
 
   label {
     min-width: unset;
