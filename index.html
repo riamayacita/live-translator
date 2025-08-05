@@ -257,33 +257,63 @@
       }
     }
 
-    @media (max-width: 480px) {
-      .container {
-        padding: 20px 15px;
-      }
-      label {
-        min-width: unset;
-      }
-      select {
-        flex: 1 1 100%;
-        min-width: unset;
-        margin-bottom: 12px;
-      }
-      .lang-selectors {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-      .controls-group {
-        gap: 4px 4px;
-      }
-      .controls-group button {
-        flex: 1 1 100%;
-        max-width: 100%;
-      }
-      h1 {
-        font-size: 1.5rem;
-      }
-    }
+   @media (max-width: 480px) {
+  html, body {
+    overflow-x: hidden;
+  }
+
+  .container {
+    padding: 20px 15px;
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .lang-selectors {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  label {
+    min-width: unset;
+    width: 100%;
+  }
+
+  select {
+    width: 100%;
+    flex: unset;
+    min-width: unset;
+    margin-bottom: 12px;
+  }
+
+  .controls-group {
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .controls-group button {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .box {
+    width: 100%;
+    min-width: unset;
+    height: 180px;
+  }
+
+  .saved-box {
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+    text-align: center;
+  }
+}
+
   </style>
 </head>
 <body>
