@@ -534,18 +534,32 @@
       }
     }
 
-    function startTranslation() {
-      if (recognition && !recognizing) {
-        let lang = document.getElementById("sourceLang").value;
-        recognition.lang = lang === "auto" ? "en-US" : lang + "-US";
+   function startTranslation() {
+  if (recognition && !recognizing) {
+    let lang = document.getElementById("sourceLang").value;
+    recognition.lang = lang === "auto" ? "en-US" : lang + "-US";
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.start();
+    recognizing = true;
+    requestWakeLock();
+
+    // Restart if it ends unexpectedly (common on Android Chrome)
+    recognition.onend = () => {
+      if (recognizing) {
         recognition.start();
-        recognizing = true;
-        requestWakeLock(); // keep screen awake during translation
-        recognition.onend = function () {
-          if (recognizing) recognition.start();
-        };
       }
-    }
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error:", event.error);
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        stopTranslation();
+      }
+    };
+  }
+}
+
 
     function stopTranslation() {
       if (recognition && recognizing) {
