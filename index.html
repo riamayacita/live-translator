@@ -257,7 +257,7 @@
       }
     }
 
- @media (max-width: 480px) {
+@media (max-width: 480px) {
   .container {
     padding: 10px 10px;
   }
@@ -272,15 +272,16 @@
   .lang-selectors label,
   .lang-selectors select {
     width: 100%;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
   }
 
   select {
     min-width: unset;
     width: 100%;
     margin: 0;
-    padding: 4px 6px;
-    font-size: 0.9rem;
+    padding: 3px 5px; /* smaller padding for less height */
+    font-size: 0.85rem;
+    height: 32px; /* explicit height control */
   }
 
   h1 {
@@ -298,10 +299,12 @@
   .controls-group button {
     flex: 1 1 100%;
     max-width: 100%;
-    padding: 6px 8px;
-    font-size: 0.9rem;
+    padding: 4px 6px; /* smaller vertical padding */
+    font-size: 0.85rem;
+    height: 34px; /* smaller button height */
   }
 }
+
 
   </style>
 </head>
