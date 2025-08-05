@@ -57,6 +57,7 @@
       min-width: 110px;
     }
 
+    /* UPDATED: Make selects same size as buttons */
     select {
       flex: 1 1 160px;
       padding: 8px 12px;
@@ -68,6 +69,8 @@
       cursor: pointer;
       transition: border-color 0.25s ease;
       min-width: 160px;
+      box-sizing: border-box;
+      max-width: 100%;
     }
 
     select:focus {
@@ -100,12 +103,15 @@
       background-color: #34495e;
       color: #fff;
       cursor: pointer;
-      min-width: 130px;
+      min-width: 160px;  /* UPDATED to match selects */
       box-shadow: 0 3px 6px rgb(52 73 94 / 0.4);
       user-select: none;
       transition: background-color 0.3s ease;
       font-weight: 600;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      flex: 1 1 160px;  /* UPDATED to match selects */
+      max-width: 100%;
+      box-sizing: border-box;
     }
 
     .controls-group button:hover {
@@ -251,63 +257,67 @@
         min-width: unset;
         height: 180px;
       }
+      .controls-group button,
+      .lang-selectors select {
+        flex: 1 1 160px;
+        min-width: 160px;
+        max-width: 100%;
+        box-sizing: border-box;
+      }
       .controls-group button {
         max-width: 100%;
-        flex: 1 1 130px;
       }
     }
 
-@media (max-width: 480px) {
-  .container {
-    padding: 10px 10px;
-  }
+    @media (max-width: 480px) {
+      .container {
+        padding: 10px 10px;
+      }
 
-  .lang-selectors {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
-    width: 100%;
-  }
+      .lang-selectors {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+        width: 100%;
+      }
 
-  .lang-selectors label,
-  .lang-selectors select {
-    width: 100%;
-    font-size: 0.85rem;
-  }
+      .lang-selectors label,
+      .lang-selectors select {
+        width: 100%;
+        font-size: 0.85rem;
+      }
 
-  select {
-    min-width: unset;
-    width: 100%;
-    margin: 0;
-    padding: 2px 6px;
-    font-size: 0.85rem;
-    height: 36px;
-    line-height: 1.2;
-    box-sizing: border-box;
-  }
+      /* UPDATED: Make selects and buttons same size on small screens */
+      select, 
+      .controls-group button {
+        width: 100%;
+        min-width: unset;
+        padding: 6px 8px;
+        font-size: 0.85rem;
+        height: 36px;
+        line-height: 1.2;
+        box-sizing: border-box;
+      }
 
-  h1 {
-    font-size: 1.2rem;
-    text-align: center;
-    margin-bottom: 10px;
-  }
+      h1 {
+        font-size: 1.2rem;
+        text-align: center;
+        margin-bottom: 10px;
+      }
 
-  .controls-group {
-    gap: 3px;
-    flex-wrap: wrap;
-    margin-top: 5px;
-  }
+      .controls-group {
+        gap: 3px;
+        flex-wrap: wrap;
+        margin-top: 5px;
+      }
 
-  .controls-group button {
-    flex: 1 1 100%;
-    max-width: 100%;
-    padding: 6px 8px;
-    font-size: 0.85rem;
-    height: 36px;
-    line-height: 1.2;
-  }
-}
-
+      .controls-group button {
+        flex: 1 1 100%;
+        max-width: 100%;
+        height: 36px;
+        line-height: 1.2;
+      }
+    }
 
   </style>
 </head>
@@ -525,12 +535,12 @@
         });
 
         mediaRecorder.addEventListener("stop", () => {
-          audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
-          const a = document.createElement("a");
-          a.href = URL.createObjectURL(audioBlob);
-          a.download = "recording.mp3";
-          a.click();
+          audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+          releaseWakeLock();
+          document.getElementById("recording-indicator").style.display = "none";
         });
+      }).catch(err => {
+        alert("Microphone permission denied or not available.");
       });
     }
 
@@ -538,37 +548,29 @@
       if (mediaRecorder && mediaRecorder.state === "recording") {
         mediaRecorder.pause();
         pause = true;
-        document.getElementById("recording-indicator").style.display = "none";
       }
     }
 
     function resumeRecording() {
-      if (mediaRecorder && pause) {
+      if (mediaRecorder && mediaRecorder.state === "paused") {
         mediaRecorder.resume();
         pause = false;
-        document.getElementById("recording-indicator").style.display = "inline";
       }
     }
 
     function stopRecording() {
-      if (mediaRecorder && isRecording) {
+      if (mediaRecorder && (mediaRecorder.state === "recording" || mediaRecorder.state === "paused")) {
         mediaRecorder.stop();
         isRecording = false;
-        document.getElementById("recording-indicator").style.display = "none";
-        releaseWakeLock(); // allow screen to dim after recording
+        pause = false;
       }
     }
 
     function startTranslation() {
       if (recognition && !recognizing) {
-        let lang = document.getElementById("sourceLang").value;
-        recognition.lang = lang === "auto" ? "en-US" : lang + "-US";
+        recognition.lang = document.getElementById("sourceLang").value || 'auto';
         recognition.start();
         recognizing = true;
-        requestWakeLock(); // keep screen awake during translation
-        recognition.onend = function () {
-          if (recognizing) recognition.start();
-        };
       }
     }
 
@@ -576,7 +578,6 @@
       if (recognition && recognizing) {
         recognition.stop();
         recognizing = false;
-        releaseWakeLock(); // allow screen to dim after translation
       }
     }
 
@@ -587,26 +588,19 @@
     }
 
     function saveAsText() {
-      const savedContent = document.getElementById("saved-content");
-      const entries = savedContent.querySelectorAll("div");
-
-      let textToSave = "";
-
-      entries.forEach(entry => {
-        const original = entry.querySelector("strong");
-        const translated = entry.querySelector("span");
-
-        if (original && translated) {
-          textToSave += original.innerText.trim() + "\n";
-          textToSave += translated.innerText.trim() + "\n\n";
-        }
-      });
-
-      const blob = new Blob([textToSave], { type: "text/plain" });
+      const transcribed = document.getElementById("transcribed-text").value;
+      const translated = document.getElementById("translated-text").value;
+      const blob = new Blob([transcribed + "\n\n" + translated], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "translations.txt";
+      a.href = url;
+      a.download = "translation.txt";
+      document.body.appendChild(a);
       a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 0);
     }
   </script>
 </body>
