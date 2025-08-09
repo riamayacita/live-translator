@@ -569,26 +569,35 @@
       }
     }
 
-    function stopRecording() {
-      if (mediaRecorder && isRecording) {
-        mediaRecorder.stop();
-        isRecording = false;
-        document.getElementById("recording-indicator").style.display = "none";
-        releaseWakeLock(); // allow screen to dim after recording
-      }
-    }
-
-   function startTranslation() {
+    function startTranslation() {
   if (recognition && !recognizing) {
+    const langMap = {
+      "en": "en-US",
+      "it": "it-IT",
+      "es": "es-ES",
+      "id": "id-ID",
+      "pt": "pt-PT",
+      "fr": "fr-FR",
+      "ja": "ja-JP",
+      "ko": "ko-KR",
+      "vi": "vi-VN",
+      "ru": "ru-RU",
+      "ig": "en-NG",  // fallback for Igbo
+      "pl": "pl-PL",
+      "de": "de-DE",
+      "hi": "hi-IN",
+      "zh": "zh-CN",
+      "th": "th-TH"
+    };
+
     let lang = document.getElementById("sourceLang").value;
-    recognition.lang = lang === "auto" ? "en-US" : lang + "-US";
+    recognition.lang = lang === "auto" ? "en-US" : (langMap[lang] || "en-US");
     recognition.continuous = true;
     recognition.interimResults = false;
     recognition.start();
     recognizing = true;
     requestWakeLock();
 
-    // Restart if it ends unexpectedly (common on Android Chrome)
     recognition.onend = () => {
       if (recognizing) {
         recognition.start();
